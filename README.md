@@ -1,5 +1,6 @@
 # git 基本命令学习  
-  
+
+
 #### git 是如何工作的？  
 1. 在git 服务器上创建一个远程仓库。  
 2. 将远程仓库克隆到本地仓库。  
@@ -32,6 +33,7 @@ git 包括两部分，一个客户端，一个服务器端。
 然后，我们需要将公钥文件中的内容添加到github账户中。  
 登录github账户，在Setting > SSH and GPG keys 中添加SSH密钥。  
 至此，客户端和服务段身份认证部分完成。  
+
 
 ## * git 操作
 #### 新建一个远程仓库  
@@ -71,7 +73,12 @@ git 包括两部分，一个客户端，一个服务器端。
 ` git checkout master `  
 #### 将新分支融合到 master 分支中  
 ` git merge new_branch `  
-  
+
+
+## * 继续阅读下面内容，请先阅读 [reset解密](https://git-scm.com/book/en/v2/Git-Tools-Reset-Demystified)
+需要了解git 中的三棵树。当前工作目录，暂存区，提交历史。
+
+
 ## * 显示区别  
 #### 比较当前目录和暂存区的区别  
 ` git diff `  
@@ -89,19 +96,22 @@ git 包括两部分，一个客户端，一个服务器端。
 ` git diff commit1_sha1 commit2_sha1 `  
 #### 显示某个文件在两次提交历史中的区别  
 ` git diff commit1_sha1 commit2_sha1 -- filepath`  
-  
+
+
 ## * 显示文件内容  
 #### 显示某个文件在某次提交历史中的内容  
 ` git show commit_sha1:filepath `  
-  
+
+
 ## * 修改当前目录  
 #### 放弃所有对于当前目录的更改  
-` git stash # 之后使用 git stash pop 可以恢复过来 `  
+` git stash  # 之后使用 git stash pop 可以恢复过来 `  
 或者  
-` git checkout -- filepath # 永久性的 `  
+` git checkout -- filepath  # 永久性的 `  
 或者  
-` git reset --hard # 永久性的 `  
+` git reset --hard  # 永久性的 `  
   
+
 ## * 修改暂存区  
 #### 放弃所有对于当前暂存区的更改  
 ` git reset [--mixed]  # 放弃所有更改 `  
@@ -111,6 +121,7 @@ git 包括两部分，一个客户端，一个服务器端。
 ` git stash  # 放弃所有更改，但是保存这些更改以便今后使用 `  
 相关知识请参考[撤销更改](https://docs.gitlab.com/ee/topics/git/numerous_undo_possibilities_in_git/)  
   
+
 ## * 修改提交历史  
 注意：一旦将本地历史同步到远程仓库后，请不要在修改本地历史。这会混淆其他查看者。  
 #### 修改最后一次的提交历史  
