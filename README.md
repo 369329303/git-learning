@@ -133,4 +133,12 @@ edit： 用于修改和分割提交历史（分割提交历史需要git reset, a
 squash: 用于合并提交历史的  
 相关知识请参考[重写提交历史](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History)  
   
-完。
+完。	
+
+## git 杂项
+#### 保存git的用户名和密码
+```
+git config credential.helper store
+git pull
+```
+用户名和密码存储在~/.git-credentials中。
