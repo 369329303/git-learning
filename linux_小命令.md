@@ -6,3 +6,26 @@ grep -rnw . -e 'hello'
 -w: whole word
 -e: pattern
 ```
+
+## wget小技巧
+```
+wget -A pdf,jpg -m -p -E -k -K -np http://site/path/
+或者
+wget --accept pdf,jpg --mirror --page-requisites --adjust-extension --convert-links --backup-converted --no-parent http://site/path/
+```
+
+## php上传文件
+1. 修改 /etc/php/7.2/apache2/php.ini文件
+
+2. 设置
+```
+file_uploads = On
+post_max_size = 100M
+upload_max_filesize = 100M
+```
+用phpinfo()函数来验证。
+
+3. 代码
+[参考这个页面](https://gist.github.com/taterbase/2688850)
+
+当前目录下也复制了一份：upload.php
