@@ -12,11 +12,9 @@
 
 (add-hook 'text-mode-hook 'auto-fill-mode)
 (show-paren-mode t)
-;; (menu-bar-mode -1)
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
 (display-time-mode t)
-;; (global-linum-mode t)
 ;; auto close bracket insertion
 (electric-pair-mode t)
 (setq inhibit-startup-screen t)
@@ -24,7 +22,7 @@
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 (ido-mode t)
-;; Display ido results vertically, rather than horizontally
+; Display ido results vertically, rather than horizontally
 (setq ido-decorations (quote ("\n-> " "" "\n   " "\n   ..." "[" "]" " [No match]" " [Matched]" " [Not readable]" " [Too big]" " [Confirm]")))
 (defun ido-disable-line-truncation () (set (make-local-variable 'truncate-lines) nil))
 (add-hook 'ido-minibuffer-setup-hook 'ido-disable-line-truncation)
@@ -34,6 +32,8 @@
 (add-hook 'ido-setup-hook 'ido-define-keys)
 ;; display any item that contains the chars you typed
 (setq ido-enable-flex-matching t)
+(setq ido-max-window-height 0.8)
+
 
 
 (require 'package)
@@ -41,17 +41,12 @@
 ;; (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t)
 (setq package-archives '(("gnu"   . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")
 			 ("melpa" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/melpa/")))
-;; (add-to-list 'package-archives
-;;             '("melpa-stable" . "https://stable.melpa.org/packages/"))
 (package-initialize)
 
 (elpy-enable)
 (setq elpy-rpc-python-command "python3")
 (setq python-shell-interpreter "python3"
       python-shell-interpreter-args "-i")
-
-
-
 
 
 (custom-set-faces
@@ -71,10 +66,16 @@
  '(display-time-mode t)
  '(package-selected-packages
    (quote
-    (evil zenburn-theme use-package solarized-theme elpygen elpy color-theme blackboard-theme)))
+    (clang-format projectile flycheck web-mode-edit-element use-package solarized-theme elpygen elpy color-theme)))
  '(show-paren-mode t)
  '(tool-bar-mode nil))
 
 
 (load-theme 'solarized-dark)
-(put 'upcase-region 'disabled nil)
+(projectile-mode t)
+(define-key projectile-mode-map (kbd "M-p") 'projectile-command-map) 
+
+(add-hook
+ 'c-mode-hook
+ (lambda ()
+   (local-set-key (kbd "<tab>") 'clang-format-buffer)))
