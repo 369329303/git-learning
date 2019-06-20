@@ -29,3 +29,10 @@ upload_max_filesize = 100M
 [参考这个页面](https://gist.github.com/taterbase/2688850)
 
 当前目录下也复制了一份：upload.php
+
+## ctags小技巧
+```
+/usr/bin/ctags -eR .
+-e: tag for emacs
+-R: recursively
+```
