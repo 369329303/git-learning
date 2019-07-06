@@ -1,8 +1,7 @@
 <?php
 $text = $_POST["text"];
 if (isset($text))
-    file_put_contents("text.dat", trim($text));
-echo $text;
+   file_put_contents("text.dat", trim($text));
 ?>
 
 <html>
@@ -18,7 +17,7 @@ echo $text;
     </head>
     <body>
 	<form action="text.php" method="post" class="center">
-	    <textarea name="text" cols="50" rows="30">
+	    <textarea name="text" cols="50" rows="10">
 		<?php
 		$fh = fopen('text.dat','r');
 		while ($line = fgets($fh))

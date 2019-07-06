@@ -1,5 +1,6 @@
 <html>
     <head>
+	<title>Download file from Internet</title>
 	<style>
 	 body {
 	     text-align: center;
@@ -18,11 +19,12 @@
 	<?php
 	$url = $_POST["url"];
 	if (isset($url)) {
-	    $cmd = "wget -P /var/www/html/res/ " . $url;
-	    /* echo $cmd; */
-	    /* exec($cmd); */
+	    echo exec("pwd");
+	    $cmd = "cd /var/www/html/res/ && curl -s -L -O " . $url;
+	    exec($cmd);
+	    echo " <b>" . $output . "</b> " . $return_var;
 	    echo "<br /><br />";
-	    echo "The link [ <font color='red'>" . $url . "</font> ] has been downloaded!";
+	    echo "The link [ <font color='green'>" . $url . "</font> ] has been downloaded!";
 	}
 	?>
     </body>

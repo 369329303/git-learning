@@ -6,3 +6,9 @@ M-x revert-buffer-with-coding-system
 ```
 M-x set-buffer-file-coding-system
 ```
+
+## 代码自动补全
+```
+prerequisites: apt install cmake libclang-dev
+install: irony-mode
+```

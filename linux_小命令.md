@@ -40,8 +40,18 @@ upload_max_filesize = 100M
 
 ## 对一个目录下所有的.h .c 文件使用 clang-format重新排版
 ```
-find . -iname *.[ch] | xargs clang-format -i
--iname: 大小写不敏感名字匹配
+find . -iregex .\*\.[ch] | xargs clang-format -i
+-iregex: 大小写不敏感正则表达式
 xargs: 将前一个输出作为下一个的输入
 -i: inplace替换，不输出到终端
 ```
+
+## 批量对一个目录DIR下文件从gbk转成utf-8,并放入新创建的newDIR目录中
+find DIR -type d -exec mkdir -p newDIR/{} \;
+find DIR -type f -exec iconv -f GBK -t UTF-8 {} -o newDIR/{} \;
+
+## 对当前目录下的所有文件进行替换
+find . -type f -exec sed -i 's/foo/bar/g' {} +
+
+## edit remote files
+C-x C-f /ssh:user@192.168.1.5:/usr/share/nginx/html/index.html
