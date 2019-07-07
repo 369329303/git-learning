@@ -40,7 +40,7 @@ upload_max_filesize = 100M
 
 ## 对一个目录下所有的.h .c 文件使用 clang-format重新排版
 ```
-find . -iregex .\*\.[ch] | xargs clang-format -i
+find . -iregex .\*\\.[ch] | xargs clang-format -i
 -iregex: 大小写不敏感正则表达式
 xargs: 将前一个输出作为下一个的输入
 -i: inplace替换，不输出到终端

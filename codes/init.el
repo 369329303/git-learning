@@ -16,23 +16,29 @@
 (scroll-bar-mode -1)
 (display-time-mode t)
 ;; auto close bracket insertion
+(setq linum-mode t)
 (electric-pair-mode t)
 (setq inhibit-startup-screen t)
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 (ido-mode t)
-; Display ido results vertically, rather than horizontally
+;; Display ido results vertically, rather than horizontally
 (setq ido-decorations (quote ("\n-> " "" "\n   " "\n   ..." "[" "]" " [No match]" " [Matched]" " [Not readable]" " [Too big]" " [Confirm]")))
 (defun ido-disable-line-truncation () (set (make-local-variable 'truncate-lines) nil))
 (add-hook 'ido-minibuffer-setup-hook 'ido-disable-line-truncation)
 (defun ido-define-keys () ;; C-n/p is more intuitive in vertical layout
-(define-key ido-completion-map (kbd "C-n") 'ido-next-match)
-(define-key ido-completion-map (kbd "C-p") 'ido-prev-match))
+  (define-key ido-completion-map (kbd "C-n") 'ido-next-match)
+  (define-key ido-completion-map (kbd "C-p") 'ido-prev-match))
 (add-hook 'ido-setup-hook 'ido-define-keys)
-;; display any item that contains the chars you typed
+;; ;; display any item that contains the chars you typed
 (setq ido-enable-flex-matching t)
-(setq ido-max-window-height 0.8)
+(setq ido-max-window-height 1.0)
+
+;; 设置文件编码格式优先级
+(prefer-coding-system 'gbk)
+(prefer-coding-system 'utf-8)
+
 
 
 
@@ -54,7 +60,7 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "Hack" :foundry "unknown" :slant normal :weight normal :height 163 :width normal)))))
+ '(default ((t (:family "Hack" :foundry "unknown" :slant normal :weight normal :height 181 :width normal)))))
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -66,16 +72,29 @@
  '(display-time-mode t)
  '(package-selected-packages
    (quote
-    (clang-format projectile flycheck web-mode-edit-element use-package solarized-theme elpygen elpy color-theme)))
+    (flx-isearch flx-ido php-mode irony clang-format projectile flycheck web-mode-edit-element use-package solarized-theme elpygen elpy)))
  '(show-paren-mode t)
  '(tool-bar-mode nil))
 
 
 (load-theme 'solarized-dark)
 (projectile-mode t)
-(define-key projectile-mode-map (kbd "M-p") 'projectile-command-map) 
+(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 
 (add-hook
  'c-mode-hook
  (lambda ()
-   (local-set-key (kbd "<tab>") 'clang-format-buffer)))
+   (local-set-key (kbd "<backtab>") 'clang-format-buffer)))
+
+;; c/c++ code complete
+(add-hook 'c++-mode-hook 'irony-mode)
+(add-hook 'c-mode-hook 'irony-mode)
+(add-hook 'irony-mode-hook 'irony-cdb-autosetup-compile-options)
+
+
+;; html/css/php
+(add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.php\\'" . web-mode))
+
+
