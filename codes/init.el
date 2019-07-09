@@ -19,6 +19,7 @@
 (setq linum-mode t)
 (electric-pair-mode t)
 (setq inhibit-startup-screen t)
+(save-place-mode t)
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
