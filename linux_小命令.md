@@ -40,7 +40,7 @@ upload_max_filesize = 100M
 
 ## 对一个目录下所有的.h .c 文件使用 clang-format重新排版
 ```
-find . -iregex .\*\\.[ch] | xargs ls -lh | grep -P -v '\dM'  | awk '{print $NF}' | xargs clang-format -i
+find . -iregex .\*\\.[ch] | xargs ls -lh | grep -P -v '\dM'  | awk '{print $NF}' | xargs clang-format -i --style=google
 -P: Perl Compatible Regular Expression
 find . -iregex .\*\\.[ch] | xargs clang-format -i
 -iregex: 大小写不敏感正则表达式
@@ -57,3 +57,16 @@ find . -type f -exec sed -i 's/foo/bar/g' {} +
 
 ## edit remote files
 C-x C-f /ssh:user@192.168.1.5:/usr/share/nginx/html/index.html
+
+## openssl
+```
+生成自签证书：openssl req -newkey rsa:2048 -nodes -keyout cakey.pem -x509 -days 365 -out cacert.pem
+生成2048位的RSA密钥：openssl genrsa -out example.key 2048
+生成证书CSR：       openssl req -new -key example.key -out example.csr -subj="/CN=www.au.com"
+显示一张CSR的文本内容： openssl req -in example.org.csr -noout -text
+显示一张证书的文本内容： openssl x509 -in example.org.crt -noout -text
+-out: 是否显示文件内容
+对CSR文件签名：openssl ca -config openssl.cnf -in example.csr -out example.crt
+获取带有SNI的服务器证书：openssl s_client -showcerts -servername www.example.com -connect www.example.com:443 </dev/null | openssl x509 -noout -text
+		     openssl s_client -showcerts -servername www.github.com -connect www.github.com:443 < /dev/null | openssl x509 -outform PEM > www.github.com.pem
+```

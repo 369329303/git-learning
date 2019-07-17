@@ -4,23 +4,22 @@
       delete-old-versions t  ; Automatically delete excess backups
       kept-new-versions 20   ; how many of the newest versions to keep
       kept-old-versions 5    ; and how many of the old
+      create-lockfiles nil   ; remove .#lockfile
 
       auto-save-file-name-transforms '((".*" "~/.emacs.d/autosaves/\\1" t))
       )
 ;; autosave files #file#
 ;; backup files file~
 
-(add-hook 'text-mode-hook 'auto-fill-mode)
 (show-paren-mode t)
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
-(display-time-mode t)
+;; (display-time-mode t)
 ;; auto close bracket insertion
-(setq linum-mode t)
 (electric-pair-mode t)
-(setq inhibit-startup-screen t)
 (save-place-mode t)
-
+(setq inhibit-startup-screen t)
+(add-hook 'text-mode-hook 'auto-fill-mode)
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 (ido-mode t)
@@ -41,21 +40,11 @@
 (prefer-coding-system 'utf-8)
 
 
-
-
 (require 'package)
 ;; Add melpa package source when using package list
 ;; (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t)
 (setq package-archives '(("gnu"   . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")
 			 ("melpa" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/melpa/")))
-(package-initialize)
-
-(elpy-enable)
-(setq elpy-rpc-python-command "python3")
-(setq python-shell-interpreter "python3"
-      python-shell-interpreter-args "-i")
-
-
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -70,28 +59,48 @@
  '(custom-safe-themes
    (quote
     ("8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" default)))
- '(display-time-mode t)
  '(package-selected-packages
    (quote
-    (flx-isearch flx-ido php-mode irony clang-format projectile flycheck web-mode-edit-element use-package solarized-theme elpygen elpy)))
+    (helm flycheck-irony irony-eldoc company-irony-c-headers company-irony irony clang-format projectile flycheck web-mode-edit-element use-package solarized-theme elpygen elpy)))
  '(show-paren-mode t)
  '(tool-bar-mode nil))
 
+(package-initialize)
 
 (load-theme 'solarized-dark)
 (projectile-mode t)
 (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 
+(elpy-enable)
+(setq elpy-rpc-python-command "python3")
+(setq python-shell-interpreter "python3"
+      python-shell-interpreter-args "-i")
+
 (add-hook
  'c-mode-hook
  (lambda ()
    (local-set-key (kbd "<backtab>") 'clang-format-buffer)))
+(add-hook
+ 'c++-mode-hook
+ (lambda ()
+   (local-set-key (kbd "<backtab>") 'clang-format-buffer)))
 
-;; c/c++ code complete
-(add-hook 'c++-mode-hook 'irony-mode)
+;; company mode
+(add-hook 'after-init-hook 'global-company-mode)
+
+;; c/c++/object-c code complete
 (add-hook 'c-mode-hook 'irony-mode)
+(add-hook 'c++-mode-hook 'irony-mode)
+(add-hook 'objc-mode-hook 'irony-mode)
 (add-hook 'irony-mode-hook 'irony-cdb-autosetup-compile-options)
 
+;; eldoc-mode
+(add-hook 'irony-mode-hook 'irony-eldoc)
+
+;; flycheck-mode
+(add-hook 'irony-mode-hook 'flycheck-mode)
+(eval-after-load 'flycheck
+'(add-hook 'flycheck-mode-hook #'flycheck-irony-setup))
 
 ;; html/css/php
 (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))

@@ -28,3 +28,10 @@ install: irony-mode
 ```
 C-h C 或者 C-h v buffer-file-coding-system
 ```
+
+## 删除操作
+```
+删除当前window：delete-window
+删除当前frame：delete-frame
+删除当前buffer：kill-buffer
+```

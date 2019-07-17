@@ -14,7 +14,7 @@ ip addr/link show dev ens33
 ## 3. 改变某个网卡的活动状态
 ```
 ifconfig ens33 up/down
-ip link set ens33 up/down
+ip link set dev ens33 up/down
 ```
 
 ## 4. 修改某个网卡的IP地址
