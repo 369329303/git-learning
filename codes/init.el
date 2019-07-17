@@ -50,7 +50,7 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(default ((t (:family "Hack" :foundry "unknown" :slant normal :weight normal :height 181 :width normal)))))
+ '(default ((t (:family "Hack" :foundry "unknown" :slant normal :weight normal :height 151 :width normal)))))
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -61,7 +61,7 @@
     ("8aebf25556399b58091e533e455dd50a6a9cba958cc4ebb0aab175863c25b9a4" default)))
  '(package-selected-packages
    (quote
-    (helm flycheck-irony irony-eldoc company-irony-c-headers company-irony irony clang-format projectile flycheck web-mode-edit-element use-package solarized-theme elpygen elpy)))
+    (magit go go-mode helm-projectile helm flycheck-irony irony-eldoc company-irony-c-headers company-irony irony clang-format projectile flycheck web-mode-edit-element use-package solarized-theme elpygen elpy)))
  '(show-paren-mode t)
  '(tool-bar-mode nil))
 
@@ -70,6 +70,7 @@
 (load-theme 'solarized-dark)
 (projectile-mode t)
 (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+(helm-projectile-on)
 
 (elpy-enable)
 (setq elpy-rpc-python-command "python3")
@@ -107,4 +108,21 @@
 (add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.php\\'" . web-mode))
 
+(add-to-list 'auto-mode-alist '("\\.conf\\'" . conf-mode))
+(add-to-list 'auto-mode-alist '("\\.cnf\\'" . conf-mode))
+(add-to-list 'auto-mode-alist '("\\.ini\\'" . conf-mode))
+
+
+
+(defun set-exec-path-from-shell-PATH ()
+  (let ((path-from-shell (replace-regexp-in-string
+                          "[ \t\n]*$"
+                          ""
+                          (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
+    (setenv "PATH" path-from-shell)
+    (setq eshell-path-env path-from-shell) ; for eshell users
+    (setq exec-path (split-string path-from-shell path-separator))))
+
+(when window-system (set-exec-path-from-shell-PATH))
+(global-set-key (kbd "C-x g") 'magit-status)
 
