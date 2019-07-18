@@ -39,3 +39,9 @@ ip route get 8.8.8.8
 route add/del -net 192.168.191.0/24 gw 192.168.192.2 dev ens33
 ip route add/del 192.168.191.0/24 via 192.168.192.2 dev ens33
 ```
+
+## 8. 路由表中添加默认路由
+```
+route add default gw 192.168.43.1 dev wlp3s0
+ip route add default via 192.168.43.1 dev wlp3s0
+```
