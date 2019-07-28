@@ -70,5 +70,7 @@ C-x C-f /ssh:user@192.168.1.5:/usr/share/nginx/html/index.html
 获取带有SNI的服务器证书：openssl s_client -showcerts -servername www.example.com -connect www.example.com:443 </dev/null | openssl x509 -noout -text
 		     openssl s_client -showcerts -servername www.github.com -connect www.github.com:443 < /dev/null | openssl x509 -outform PEM > www.github.com.pem
 生成pfx/p12个人证书：openssl pkcs12 -export -out mycert.p12 -inkey mykey.pem -in mycert.pem -certfile more.crt
-		     
+
 ```
+
+## test

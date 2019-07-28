@@ -43,7 +43,7 @@ dir		= ./demoCA		# Where everything is kept
 certs		= $dir/certs		# Where the issued certs are kept
 crl_dir		= $dir/crl		# Where the issued crl are kept
 database	= $dir/index.txt	# database index file.
-#unique_subject	= no			# Set to 'no' to allow creation of
+unique_subject	= no			# Set to 'no' to allow creation of
 					# several certs with same subject.
 new_certs_dir	= $dir/newcerts		# default place for new certs.
 
@@ -86,7 +86,7 @@ countryName		= optional
 stateOrProvinceName	= optional
 organizationName	= optional
 organizationalUnitName	= optional
-commonName		= supplied
+commonName		= optional
 emailAddress		= optional
 
 # For the 'anything' policy
@@ -104,9 +104,9 @@ emailAddress		= optional
 ####################################################################
 [ req ]
 default_bits		= 2048
-default_keyfile 	= privkey.pem
+default_keyfile 	= cakey.pem
 distinguished_name	= req_distinguished_name
-attributes		= req_attributes
+# attributes		= req_attributes
 x509_extensions	= v3_ca	# The extensions to add to the self signed cert
 
 # Passwords for private keys if not present they will be prompted for
@@ -126,27 +126,27 @@ string_mask = utf8only
 
 [ req_distinguished_name ]
 countryName			= Country Name (2 letter code)
-countryName_default		= AU
+countryName_default		= US
 countryName_min			= 2
 countryName_max			= 2
 
 stateOrProvinceName		= State or Province Name (full name)
-stateOrProvinceName_default	= Some-State
+stateOrProvinceName_default	= California
 
 localityName			= Locality Name (eg, city)
 
 0.organizationName		= Organization Name (eg, company)
-0.organizationName_default	= Internet Widgits Pty Ltd
+0.organizationName_default	= AAAA Inc.
 
 # we can do this but it is not needed normally :-)
 #1.organizationName		= Second Organization Name (eg, company)
 #1.organizationName_default	= World Wide Web Pty Ltd
 
 organizationalUnitName		= Organizational Unit Name (eg, section)
-#organizationalUnitName_default	=
 
 commonName			= Common Name (e.g. server FQDN or YOUR name)
 commonName_max			= 64
+commonName_default		= www.aaaa.com
 
 emailAddress			= Email Address
 emailAddress_max		= 64
@@ -188,7 +188,7 @@ basicConstraints=CA:FALSE
 # keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 
 # This will be displayed in Netscape's comment listbox.
-nsComment			= "OpenSSL Generated Certificate"
+# nsComment			= "OpenSSL Generated Certificate"
 
 # PKIX recommendations harmless if included in all certificates.
 subjectKeyIdentifier=hash
@@ -220,6 +220,7 @@ authorityKeyIdentifier=keyid,issuer
 
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+
 
 [ v3_ca ]
 
