@@ -296,8 +296,8 @@
 (use-package move-text
   :ensure t
   :bind
-  (([(meta shift up)] . move-text-up)
-   ([(meta shift down)] . move-text-down)))
+  (([(meta up)] . move-text-up)
+   ([(meta down)] . move-text-down)))
 
 (use-package rainbow-delimiters
   :ensure t)
@@ -308,6 +308,7 @@
   (add-hook 'prog-mode-hook #'rainbow-mode))
 
 (use-package whitespace
+  :disabled
   :init
   (dolist (hook '(prog-mode-hook text-mode-hook))
     (add-hook hook #'whitespace-mode))
@@ -337,7 +338,7 @@
   (setq company-tooltip-align-annotations t)
   ;; invert the navigation direction if the the completion popup-isearch-match
   ;; is displayed on top (happens near the bottom of windows)
-  (setq company-tooltip-flip-when-above t)
+  ;;  (setq company-tooltip-flip-when-above t)
   (global-company-mode))
 
 (use-package hl-todo
@@ -468,7 +469,8 @@
   (elpy-enable)
   :config
   (setq elpy-rpc-python-command "python3")
-  (setq python-shell-interpreter "python3"))
+  (setq python-shell-interpreter "python3")
+  (setq python-shell-interpreter-args "-i"))
 
 (use-package hi-lock
   :ensure t
@@ -479,6 +481,7 @@
   (hi-lock-mode t))
 
 (use-package helm
+  :ensure t
   :bind (("M-x" . helm-M-x)
          ("C-x C-f" . helm-find-files)
          ([f10] . helm-buffers-list)
@@ -490,6 +493,11 @@
 (use-package yasnippet
   :ensure t
   :bind ("C-c s" . company-yasnippet))
+
+(use-package transpose-frame
+  :ensure t
+  :bind ("C-x t" . transpose-frame))
+
 
 ;; config changes made through the customize UI will be stored here
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
