@@ -1,0 +1,136 @@
+* Iptables 学习
+- PREROUTING: 在进行路由选择前处理数据包
+- INPUT: 处理流入的数据包
+- OUTPUT: 处理流出的数据包
+- FORWARD: 处理转发的数据包
+- POSTROUTING: 在进行路由选择后处理数据包
+
+- ACCEPT: 允许流量通过
+- REJECT: 拒绝流量通过
+  会在拒绝流量后,再回复一条"你的信息已经收到,但是被扔掉了"的信息,从而让流量发送
+  方清晰地看到数据被拒绝的响应消息.
+- LOG: 记录日志信息
+- DROP: 拒绝流量通过
+  直接将流量丢弃而且不响应.
+
+
++ 显示iptables中所有规则链中的内容:
+  iptables -L
++ 清空iptables中所有规则链中的内容:
+  iptables -F
++ 为INPUT规则链设置默认规则DROP:
+  iptables -P INPUT DROP
++ 允许流入icmp协议的数据包:
+  iptables -I INPUT -p icmp -j ACCEPT
++ 删除INPUT规则链中的第一条规则:
+  iptables -D INPUT 1
++ 将INPUT规则链设置为只允许指定网段的主机访问本机的22端口:
+  iptables -I INPUT -s 192.168.0.0/16 -p tcp --dport 22 -j ACCEPT
+  iptables -A INPUT -p tcp --dport 22 -j REJECT
++ 向INPUT规则链中添加拒绝所有人访问本机的12345端口的策略规则:
+  iptables -I INPUT -p all --dport 12345 -j REJECT
++ 向INPUT规则链中添加拒绝所有主机访问本机1000~1024端口的策略规则:
+  iptables -A INPUT -p tcp --dport 1000:1024 -j REJECT
+  iptables -A INPUT -p udp --dport 1000:1024 -j REJECT
+
+* iptables 中的四张表
++ raw表
++ mangle表
++ nat表
++ filter表
+  过滤功能,IP,端口
+
+命令小结:
++ iptables -t 表名 -L
++ iptables -t 表名 -L 链名
++ iptables -t 表名 -v -L
++ iptables -t 表名 -n -L
++ iptables --line-numbers -t 表名 -L
++ iptables -t 表名 -v -x -L
++ 命令语法：iptables -t 表名 -A 链名 匹配条件 -j 动作
+  示例：iptables -t filter -A INPUT -s 192.168.1.146 -j DROP
++ 命令语法：iptables -t 表名 -I 链名 匹配条件 -j 动作
+  示例：iptables -t filter -I INPUT -s 192.168.1.146 -j ACCEPT
++ 命令语法：iptables -t 表名 -I 链名 规则序号 匹配条件 -j 动作
+  示例：iptables -t filter -I INPUT 5 -s 192.168.1.146 -j REJECT
++ 命令语法：iptables -t 表名 -P 链名 动作
+  示例：iptables -t filter -P FORWARD ACCEPT
++ 命令语法：iptables -t 表名 -D 链名 规则序号
+  示例：iptables -t filter -D INPUT 3
++ 命令语法：iptables -t 表名 -F 链名
+  示例：iptables -t filter -F INPUT
++ 命令语法：iptables -t 表名 -F
+  示例：iptables -t filter -F
++ tcp扩展模块
+  iptables -t filter -I INPUT -s 192.168.1.146 -p tcp -m tcp --dport 22:25 -j
+  REJECT
+  iptables -t filter -I INPUT -s 192.168.1.146 -p tcp -m multiport --dports
+  22,80:88 -j REJECT
++ iprange 模块
+  iptables -t filter -I INPUT -m iprange --src-range 192.168.1.127-192.168.1.146 -j DROP
++ limit模块
+  #注意，如下两条规则需配合使用，具体原因上文已经解释过，忘记了可以回顾。
+  iptables -t filter -I INPUT -p icmp -m limit --limit-burst 3 --limit 10/minute -j ACCEPT
+  iptables -t filter -A INPUT -p icmp -j REJECT
+  
+
+* TCP 标志位
+C | E | U | A | P | R | S | F
+C: Congestion Window Reduced(CWR)
+E: ECN-Echo
+U: Urgent
+A: Acknowledgement
+P: Push
+R: Reset
+S: Syn
+F: Fin
+
+* ICMP 扩展模块
++ 别人ping不通我们,但我们可以ping通别人.
+  
+
+* State模块
++ NEW: 连接中的第一个包
++ ESTABLISED: NEW 状态包后面的包理解为ESTABLISED
++ RELATED: 举个例子来说,FTP服务会有两个进程,一个是命令进程,一个是数据进程. 那么
+  数据连接中的报文相对于命令进程中的报文就是RELATED状态.
++ INVALID: 如果一个包没有状态或者无法被识别
++ UNTRACKED: 表示报文没有被追踪,无法找到相关的连接
++ 关闭所有被动连接,但接受所有主动连接
+  iptables -I INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+* 自定义链
++ 创建名为IN_WEB的自定义链
+  iptables -t filter -N IN_WEB
++ 引用自定义链
+  iptables -t filter -I INPUT -p tcp --dport 80 -j IN_WEB
++ 重命名自定义链
+  iptables -E IN_WEB WEB
++ 删除自定义链
+  删除引用计数为0并且不包含任何规则的WEB链
+  iptables -X WEB
+
+
+* 新动作
++ SNAT
++ DNAT
++ MASQUERADE
++ REDIRECT
+
+
+* NAT表
++ 开启路由转发功能
+  echo 1 > /proc/sys/net/ipv4/ip_forward
++ SNAT相关操作
+  iptables -t nat -A POSTROUTING -s 10.1.0.0/16 -j SNAT --to-source 公网IP
+  如果公网IP不是静态的,可以使用下面的命令.
+  iptables -t nat -A POSTROUTING -s 10.1.0.0/16 -o eth0 -j MASQUERADE
++ DNAT相关操作
+  iptables -t nat -I PREROUTING -d 公网IP -p tcp --dport 公网端口 -j DNAT
+  --to-destination 私网IP:端口号
++ REDIRECT相关操作
+  iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+
+* Comment 模块
++ 添加注释
+  iptables -I INPUT 5 -p tcp -j REJECT -m comment --comment "disable other tcp port"

@@ -66,11 +66,16 @@
 (setq scroll-margin 0
       scroll-conservatively 100000
       scroll-preserve-screen-position 1)
+(toggle-scroll-bar -1)
+
 
 ;; mode line settings
 (line-number-mode t)
 (column-number-mode t)
 (size-indication-mode t)
+
+;; show line number
+(global-linum-mode t)
 
 ;; enable y/n answers
 (fset 'yes-or-no-p 'y-or-n-p)
@@ -88,7 +93,7 @@
 ;; personal indentation width, while maintaining the style (and
 ;; meaning) of any files you load.
 (setq-default indent-tabs-mode nil)   ;; don't use tabs to indent
-(setq-default tab-width 8)            ;; but maintain correct appearance
+(setq-default tab-width 4)            ;; but maintain correct appearance
 
 ;; Newline at end of file
 (setq require-final-newline t)
@@ -107,6 +112,9 @@
 
 ;; revert buffers automatically when underlying files are changed externally
 (global-auto-revert-mode t)
+
+;; auto refresh dired when file changes
+(add-hook 'dired-mode-hook 'auto-revert-mode)
 
 (prefer-coding-system 'gbk)
 (prefer-coding-system 'utf-8)
@@ -128,24 +136,25 @@
 
 ;; use hippie-expand instead of dabbrev
 (global-set-key (kbd "M-/") #'hippie-expand)
-(global-set-key (kbd "s-/") #'hippie-expand)
+
+;;
+(global-set-key (kbd "<f7>") #'helm-buffers-list)
+
+;;
+(global-set-key (kbd "<f8>") #'kill-buffer-and-window)
+
+;; bind ffap function
+(global-set-key (kbd "C-c f") #'ffap)
 
 ;; replace buffer-menu with ibuffer
 (global-set-key (kbd "C-x C-b") #'ibuffer)
 
 ;; align code in a pretty way
-(global-set-key (kbd "C-x \\") #'align-regexp)
-
-(define-key 'help-command (kbd "C-i") #'info-display-manual)
-
-;; misc useful keybindings
-;; (global-set-key (kbd "s-<") #'beginning-of-buffer)
-;; (global-set-key (kbd "s->") #'end-of-buffer)
-;; (global-set-key (kbd "s-q") #'fill-paragraph)
-;; (global-set-key (kbd "s-x") #'execute-extended-command)
+(global-set-key (kbd "C-x \\") #'align-regex)
 
 ;; smart tab behavior - indent or complete
 (setq tab-always-indent 'complete)
+
 
 (unless (package-installed-p 'use-package)
   (package-install 'use-package))
@@ -218,7 +227,6 @@
   :config
   ;; dired - reuse current buffer by pressing 'a'
   (put 'dired-find-alternate-file 'disabled nil)
-
   ;; always delete and copy recursively
   (setq dired-recursive-deletes 'always)
   (setq dired-recursive-copies 'always)
@@ -237,34 +245,40 @@
   :config
   (eldoc-mode t))
 
+;; ido mode
+(use-package ido
+  :config
+  (ido-mode 1)
+  (setq ido-enable-flex-matching t)
+;;  (setq ido-everywhere t)
+  (setq ido-use-filename-at-point 'guess)
+  (setq ido-create-new-buffer 'always)
+  ;; Display ido results vertically, rather than horizontally
+  (setq ido-decorations (quote ("\n-> " "" "\n   " "\n   ..." "[" "]" " [No match]" " [Matched]" " [Not readable]" " [Too big]" " [Confirm]")))
+  (defun ido-disable-line-truncation () (set (make-local-variable 'truncate-lines) nil))
+  (add-hook 'ido-minibuffer-setup-hook 'ido-disable-line-truncation)
+  (defun ido-define-keys () ;; C-n/p is more intuitive in vertical layout
+    (define-key ido-completion-map (kbd "C-n") 'ido-next-match)
+    (define-key ido-completion-map (kbd "C-p") 'ido-prev-match))
+  (add-hook 'ido-setup-hook 'ido-define-keys))
+
+
+;; winner mode
+(use-package winner
+  :config
+  (winner-mode t))
+
 ;;; third-party packages
 (use-package solarized-theme
   :ensure t
   :config
   (load-theme 'solarized-dark t))
 
-(use-package avy
-  :ensure t
-  :disabled
-  :bind (("C-\"" . avy-goto-word-or-subword-1)
-         ("C-'" . avy-goto-char))
-  :config
-   (setq avy-background t))
-
-(use-package ace-jump-mode
-  :ensure t
-  :bind ("C-'" . ace-jump-mode))
-
 (use-package magit
   :ensure t
   :bind (("C-x g" . magit-status)))
 
 (use-package git-timemachine
-  :disabled
-  :ensure t
-  :bind (("s-g" . git-timemachine)))
-
-(use-package ag
   :ensure t)
 
 (use-package projectile
@@ -273,8 +287,11 @@
   (setq projectile-completion-system 'ivy)
   :bind-keymap ("C-c p" . projectile-command-map)
   :config
-;;  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
-  (projectile-mode +1))
+  (projectile-mode +1)
+  ;; (defadvice projectile-project-root (around ignore-remote first activate)
+  ;;   (unless (file-remote-p default-directory) ad-do-it))
+  ;; (setq projectile-mode-line "Projectile")
+  )
 
 (use-package expand-region
   :ensure t
@@ -325,8 +342,16 @@
          ("\\.markdown\\'" . markdown-mode))
   :init (setq markdown-command "multimarkdown"))
 
-(use-package yaml-mode
-  :ensure t)
+;; Useful for yaml/json
+(use-package indent-tools
+  :ensure t
+  :mode ("\\.yaml?\\'" "\\.json\\'")
+  :config
+  (global-set-key (kbd "C-c >") 'indent-tools-hydra/body))
+
+;; (use-package yaml-mode
+;;   :mode ("\\.yaml?\\'")
+;;   :ensure t)
 
 (use-package company
   :ensure t
@@ -341,35 +366,6 @@
   ;;  (setq company-tooltip-flip-when-above t)
   (global-company-mode))
 
-(use-package hl-todo
-  :ensure t
-  :config
-  (setq hl-todo-highlight-punctuation ":")
-  (global-hl-todo-mode))
-
-(use-package zop-to-char
-  :ensure t
-  :bind (("M-z" . zop-up-to-char)
-         ("M-Z" . zop-to-char)))
-
-(use-package imenu-anywhere
-  :ensure t
-  :disabled
-  :bind (("C-c i" . imenu-anywhere)
-         ("s-i" . imenu-anywhere)))
-
-(use-package flyspell
-  :ensure
-  :disabled
-  :config
-  (when (eq system-type 'windows-nt)
-    (add-to-list 'exec-path "C:/Program Files (x86)/Aspell/bin/"))
-  (setq ispell-program-name "aspell" ; use aspell instead of ispell
-        ispell-extra-args '("--sug-mode=ultra"))
-  (add-hook 'text-mode-hook #'flyspell-mode)
-  (add-hook 'prog-mode-hook #'flyspell-prog-mode))
-
-
 (use-package flycheck
   :ensure t
   :config
@@ -378,8 +374,6 @@
 (use-package super-save
   :ensure t
   :config
-  ;; add integration with ace-window
-  (add-to-list 'super-save-triggers 'ace-window)
   (super-save-mode +1))
 
 (use-package diff-hl
@@ -396,7 +390,6 @@
 
 (use-package undo-tree
   :ensure t
-  :disabled
   :config
   ;; autosave the undo-tree history
   (setq undo-tree-history-directory-alist
@@ -412,13 +405,6 @@
   (global-set-key (kbd "C-c C-r") 'ivy-resume)
   (global-set-key (kbd "<f6>") 'ivy-resume))
 
-(use-package ace-window
-  :ensure t
-  :disabled
-  :config
-  (global-set-key (kbd "M-o") 'ace-window)
-  (global-set-key [remap other-window] 'ace-window))
-
 (use-package swiper
   :ensure t
   :config
@@ -427,27 +413,24 @@
 (use-package counsel
   :ensure t
   :config
-;;  (global-set-key (kbd "M-x") 'counsel-M-x)
-;;  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
+  ;;  (global-set-key (kbd "M-x") 'counsel-M-x)
+  ;;  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
   (global-set-key (kbd "<f1> f") 'counsel-describe-function)
   (global-set-key (kbd "<f1> v") 'counsel-describe-variable)
   (global-set-key (kbd "<f1> l") 'counsel-find-library)
   (global-set-key (kbd "<f2> i") 'counsel-info-lookup-symbol)
   (global-set-key (kbd "<f2> u") 'counsel-unicode-char)
-  (global-set-key (kbd "C-c g") 'counsel-git)
-  (global-set-key (kbd "C-c j") 'counsel-git-grep)
+  ;;  (global-set-key (kbd "C-c g") 'counsel-git)
+  ;;  (global-set-key (kbd "C-c j") 'counsel-git-grep)
   (global-set-key (kbd "C-c a") 'counsel-ag)
-  (global-set-key (kbd "C-x l") 'counsel-locate)
+  (global-set-key (kbd "C-c l") 'counsel-locate)
   (define-key minibuffer-local-map (kbd "C-r") 'counsel-minibuffer-history))
-
-(use-package smartscan
-  :ensure t
-  :config
-  (global-smartscan-mode t))
 
 (use-package web-mode
   :ensure t
-  :mode ("\\.html?\\'" "\\.css\\'" "\\.php\\'" "\\.js\\'" ))
+  :mode ("\\.html?\\'" "\\.css\\'" "\\.php\\'" "\\.js\\'" )
+  :config
+  (setq web-mode-enable-auto-indentation nil))
 
 (use-package irony
   :ensure t
@@ -466,26 +449,23 @@
 (use-package elpy
   :ensure t
   :init
-  (elpy-enable)
+  (add-hook 'python-mode 'elpy-mode)
+  ;;  (elpy-enable)
   :config
   (setq elpy-rpc-python-command "python3")
   (setq python-shell-interpreter "python3")
   (setq python-shell-interpreter-args "-i"))
 
-(use-package hi-lock
-  :ensure t
-  :bind (("C-c l" . highlight-lines-matching-regexp)
-         ("C-c r" . highlight-regexp)
-         ("C-c w" . highlight-phrase))
-  :config
-  (hi-lock-mode t))
-
 (use-package helm
   :ensure t
+  :init
   :bind (("M-x" . helm-M-x)
-         ("C-x C-f" . helm-find-files)
-         ([f10] . helm-buffers-list)
-         ([S-f10] . helm-recentf)))
+         ("C-x b" . helm-buffers-list)
+         ("C-r" . helm-occur)
+         ([f5] . helm-find-files)
+         ([f6] . helm-recentf))
+  :config
+  (helm-mode 1))
 
 (use-package yasnippet-snippets
   :ensure t)
@@ -498,6 +478,49 @@
   :ensure t
   :bind ("C-x t" . transpose-frame))
 
+(use-package avy
+  :ensure t
+  :bind (("C-." . avy-goto-word-or-subword-1)
+         ("C-," . avy-goto-char))
+  :config
+  (setq avy-background t))
+
+(use-package crux
+  :ensure t
+  :bind (
+         ;; ("C-c o" . crux-open-with)
+         ;; ("M-o" . crux-smart-open-line)
+         ("C-c n" . crux-cleanup-buffer-or-region)
+         ;; ("C-c f" . crux-recentf-find-file)
+         ("C-M-z" . crux-indent-defun)
+         ;; ("C-c u" . crux-view-url)
+         ;; ("C-c e" . crux-eval-and-replace)
+         ;; ("C-c w" . crux-swap-windows)
+         ("C-c D" . crux-delete-file-and-buffer)
+         ("C-c r" . crux-rename-buffer-and-file)
+         ;; ("C-c t" . crux-visit-term-buffer)
+         ("C-c k" . crux-kill-other-buffers)
+         ("C-c TAB" . crux-indent-rigidly-and-copy-to-clipboard)
+         ("C-c I" . crux-find-user-init-file)
+         ;; ("C-c S" . crux-find-shell-init-file)
+         ;; ("s-r" . crux-recentf-find-file)
+         ;; ("s-j" . crux-top-join-line)
+         ;; ("C-^" . crux-top-join-line)
+         ;; ("s-k" . crux-kill-whole-line)
+         ;; ("C-<backspace>" . crux-kill-line-backwards)
+         ;; ("s-o" . crux-smart-open-line-above)
+         ;; ([remap move-beginning-of-line] . crux-move-beginning-of-line)
+         ([(shift return)] . crux-smart-open-line)
+         ([(control shift return)] . crux-smart-open-line-above)
+         ([remap kill-whole-line] . crux-kill-whole-line)
+         ;; ("C-c s" . crux-ispell-word-then-abbrev)
+         ))
+
+(use-package slime
+  :ensure t
+  :config
+  (load (expand-file-name "~/quicklisp/slime-helper.el"))
+  (setq inferior-lisp-program "sbcl"))
 
 ;; config changes made through the customize UI will be stored here
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))

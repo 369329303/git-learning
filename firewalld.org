@@ -1,0 +1,16 @@
+* firewalld
++ core Layer
++ D-Bus Layer
+[[file:firewalld-structure+nftables.png][firewalld overview]]
+
+
+* 预定义的区域
++ drop
++ block
++ public
++ external
++ dmz
++ work
++ home
++ internal
++ trusted

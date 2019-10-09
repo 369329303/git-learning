@@ -59,10 +59,10 @@ find . -type f -exec sed -i 's/foo/bar/g' {} +
 C-x C-f /ssh:user@192.168.1.5:/usr/share/nginx/html/index.html
 
 ## openssl
-```
+``` bash
 生成自签证书：openssl req -newkey rsa:2048 -nodes -keyout cakey.pem -x509 -days 3650 -out cacert.pem
 生成2048位的RSA密钥：openssl genrsa -out example.key 2048
-生成证书CSR：       openssl req -new -key example.key -out example.csr -subj="/CN=www.au.com"
+生成证书CSR: openssl req -new -key example.key -out example.csr -subj="/CN=www.au.com"
 显示一张CSR的文本内容： openssl req -in example.org.csr -noout -text
 显示一张证书的文本内容： openssl x509 -in example.org.crt -noout -text
 -out: 是否显示文件内容
