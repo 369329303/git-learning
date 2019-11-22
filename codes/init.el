@@ -1,21 +1,11 @@
-;;; init.el --- Initialization file for Emacs.
-;;;
-;;;
-;;; Commentary:
-;;;
-;;; Author: Jack Xue
-;;; Thanks to Bozhidar Batsov.
-;;; https://github.com/bbatsov/emacs.d/blob/master/init.el
-
-;;; Code:
-
 (require 'package)
 
 ;; Add melpa package source when using package list
-(setq package-archives '(("melpa" .
-                          "http://mirrors.tuna.tsinghua.edu.cn/elpa/melpa/")))
+(setq package-archives '(("melpa" . "https://melpa.org/packages/")
+                         ("gnu" . "https://elpa.gnu.org/packages/")))
 ;; keep the installed packages in .emacs.d
 (setq package-user-dir (expand-file-name "elpa" user-emacs-directory))
+
 ;; update the package metadata if the local cache is missing
 (package-initialize)
 (unless package-archive-contents
@@ -40,11 +30,11 @@
 (unless (file-exists-p jack-savefile-dir)
   (make-directory jack-savefile-dir))
 
+
 ;; the toolbar is just a waste of valuable screen estate
 ;; in a tty tool-bar-mode does not properly auto-load, and is
 ;; already disabled anyway
-(when (fboundp 'tool-bar-mode)
-  (tool-bar-mode -1))
+(tool-bar-mode -1)
 
 ;; the blinking cursor is nothing, but an annoyance
 (blink-cursor-mode -1)
@@ -56,16 +46,18 @@
 (setq inhibit-startup-screen t)
 
 ;; auto fill page width
-(add-hook 'text-mode-hook 'auto-fill-mode)
+;; (add-hook 'text-mode-hook 'auto-fill-mode)
 
 ;; auto maximize window
-(add-to-list 'default-frame-alist '(fullscreen . maximized))
+;; (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 
 ;; nice scrolling
 (setq scroll-margin 0
       scroll-conservatively 100000
       scroll-preserve-screen-position 1)
+
+;; hide scroll bar
 (toggle-scroll-bar -1)
 
 
@@ -75,12 +67,11 @@
 (size-indication-mode t)
 
 ;; show line number
-(global-linum-mode t)
+;; (global-linum-mode t)
 
 ;; enable y/n answers
 (fset 'yes-or-no-p 'y-or-n-p)
 
-;; ???
 ;; more useful frame title, that show either a file or a
 ;; buffer name (if the buffer isn't visiting a file)
 (setq frame-title-format
@@ -116,53 +107,36 @@
 ;; auto refresh dired when file changes
 (add-hook 'dired-mode-hook 'auto-revert-mode)
 
+;; 1. utf-8; 2. gbk
 (prefer-coding-system 'gbk)
 (prefer-coding-system 'utf-8)
 (set-default-coding-systems 'utf-8)
 (set-terminal-coding-system 'utf-8)
 (set-keyboard-coding-system 'utf-8)
 
-;; hippie expand is dabbrev expand on steroids
-(setq hippie-expand-try-functions-list '(try-expand-dabbrev
-                                         try-expand-dabbrev-all-buffers
-                                         try-expand-dabbrev-from-kill
-                                         try-complete-file-name-partially
-                                         try-complete-file-name
-                                         try-expand-all-abbrevs
-                                         try-expand-list
-                                         try-expand-line
-                                         try-complete-lisp-symbol-partially
-                                         try-complete-lisp-symbol))
 
-;; use hippie-expand instead of dabbrev
-(global-set-key (kbd "M-/") #'hippie-expand)
+(global-set-key (kbd "C-x ;") 'comment-line)
 
-;;
-(global-set-key (kbd "<f7>") #'helm-buffers-list)
-
-;;
-(global-set-key (kbd "<f8>") #'kill-buffer-and-window)
-
-;; bind ffap function
-(global-set-key (kbd "C-c f") #'ffap)
-
-;; replace buffer-menu with ibuffer
-(global-set-key (kbd "C-x C-b") #'ibuffer)
-
-;; align code in a pretty way
-(global-set-key (kbd "C-x \\") #'align-regex)
+;; switch between .c and .h file quickly
+;; (global-set-key (kbd "C-c o") 'ff-find-other-file)
 
 ;; smart tab behavior - indent or complete
-(setq tab-always-indent 'complete)
+;; (setq tab-always-indent 'complete)
 
+;; hide show minor mode
+;; (add-hook 'prog-mode-hook
+;;           'hs-minor-mode)
+
+;; (add-hook 'prog-mode-hook
+;;           'highlight-symbol-nav-mode)
 
 (unless (package-installed-p 'use-package)
   (package-install 'use-package))
-
 (require 'use-package)
 (setq use-package-verbose t)
 
-;;; built-in packages
+
+;;; packages for move and search
 (use-package paren
   :config
   (show-paren-mode +1))
@@ -171,15 +145,20 @@
   :config
   (electric-pair-mode +1))
 
+(use-package hideshow
+  :ensure t
+  :disabled
+  :commands hs-minor-mode)
+
+(use-package highlight-symbol
+  :ensure t
+  :disabled
+  :commands highlight-symbol-nav-mode)
+
 ;; highlight the current line
 (use-package hl-line
   :config
   (global-hl-line-mode +1))
-
-(use-package abbrev
-  :config
-  (setq save-abbrevs 'silently)
-  (setq-default abbrev-mode t))
 
 (use-package uniquify
   :config
@@ -223,6 +202,11 @@
   ;; use shift + arrow keys to switch between visible buffers
   (windmove-default-keybindings))
 
+;; winner mode [C-c Left], [C-c Right]
+(use-package winner
+  :config
+  (winner-mode t))
+
 (use-package dired
   :config
   ;; dired - reuse current buffer by pressing 'a'
@@ -230,68 +214,111 @@
   ;; always delete and copy recursively
   (setq dired-recursive-deletes 'always)
   (setq dired-recursive-copies 'always)
-
   ;; if there is a dired buffer displayed in the next window, use its
   ;; current subdir, instead of the current subdir of this dired buffer
   (setq dired-dwim-target t)
-
   ;; enable some really cool extensions like C-x C-j(dired-jump)
   (require 'dired-x))
 
-(use-package conf-mode
-  :mode ("\\.cnf\\'" "\\.ini\\'" ))
-
-(use-package eldoc
+(use-package helm
+  :ensure t
+  :bind (("M-x" . helm-M-x)
+         ("C-h r" . helm-occur)
+         ("C-h y" . helm-show-kill-ring)
+         ("C-h m" . helm-all-mark-rings)
+         ("C-h e" . helm-eshell-history)
+         ("C-x f" . helm-find-files)
+         ("C-x b" . helm-mini)
+         ("C-h i" . helm-imenu))
   :config
-  (eldoc-mode t))
+  (helm-mode 1))
 
-;; ido mode
-(use-package ido
-  :config
-  (ido-mode 1)
-  (setq ido-enable-flex-matching t)
-;;  (setq ido-everywhere t)
-  (setq ido-use-filename-at-point 'guess)
-  (setq ido-create-new-buffer 'always)
-  ;; Display ido results vertically, rather than horizontally
-  (setq ido-decorations (quote ("\n-> " "" "\n   " "\n   ..." "[" "]" " [No match]" " [Matched]" " [Not readable]" " [Too big]" " [Confirm]")))
-  (defun ido-disable-line-truncation () (set (make-local-variable 'truncate-lines) nil))
-  (add-hook 'ido-minibuffer-setup-hook 'ido-disable-line-truncation)
-  (defun ido-define-keys () ;; C-n/p is more intuitive in vertical layout
-    (define-key ido-completion-map (kbd "C-n") 'ido-next-match)
-    (define-key ido-completion-map (kbd "C-p") 'ido-prev-match))
-  (add-hook 'ido-setup-hook 'ido-define-keys))
-
-
-;; winner mode
-(use-package winner
-  :config
-  (winner-mode t))
-
-;;; third-party packages
-(use-package solarized-theme
+(use-package ivy
   :ensure t
   :config
-  (load-theme 'solarized-dark t))
+  (ivy-mode 1))
+
+(use-package swiper
+  :ensure t
+  :bind (("C-s" . swiper)))
+
+(use-package counsel
+  :ensure t
+  :config
+  ;;  (global-set-key (kbd "M-x") 'counsel-M-x)
+  ;;  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
+  (global-set-key (kbd "<f1> f") 'counsel-describe-function)
+  (global-set-key (kbd "<f1> v") 'counsel-describe-variable)
+  (global-set-key (kbd "<f1> k") 'describe-bindings)
+  (global-set-key (kbd "<f1> l") 'counsel-find-library)
+  (global-set-key (kbd "<f2> i") 'counsel-info-lookup-symbol)
+  (global-set-key (kbd "<f2> u") 'counsel-unicode-char)
+  ;;  (global-set-key (kbd "C-c g") 'counsel-git)
+  ;;  (global-set-key (kbd "C-c j") 'counsel-git-grep)
+  (global-set-key (kbd "C-c a") 'counsel-ag)
+  (global-set-key (kbd "C-c l") 'counsel-locate)
+  (define-key minibuffer-local-map (kbd "C-r") 'counsel-minibuffer-history))
+
+(use-package crux
+  :ensure t
+  :bind (
+         ;; ("C-c o" . crux-open-with)
+         ;; ("M-o" . crux-smart-open-line)
+         ;; ("C-c n" . crux-cleanup-buffer-or-region)
+         ;; ("C-c f" . crux-recentf-find-file)
+         ("C-M-n" . crux-indent-defun)
+         ;; ("C-c u" . crux-view-url)
+         ;; ("C-c e" . crux-eval-and-replace)
+         ;; ("C-c w" . crux-swap-windows)
+         ("C-c d" . crux-duplicate-current-line-or-region)
+         ("C-c M-d" . crux-duplicate-and-comment-current-line-or-region)
+         ("C-c D" . crux-delete-file-and-buffer)
+         ("C-c n" . crux-rename-buffer-and-file)
+         ;; ("C-c t" . crux-visit-term-buffer)
+         ("C-c k" . crux-kill-other-buffers)
+         ("C-c TAB" . crux-indent-rigidly-and-copy-to-clipboard)
+         ("C-c I" . crux-find-user-init-file)
+         ("C-c o" . crux-switch-to-previous-buffer)
+         ("C-c t" . crux-transpose-windows)
+         ;; ("C-c S" . crux-find-shell-init-file)
+         ;; ("s-r" . crux-recentf-find-file)
+         ;; ("s-j" . crux-top-join-line)
+         ;; ("C-^" . crux-top-join-line)
+         ;; ("s-k" . crux-kill-whole-line)
+         ;; ("C-<backspace>" . crux-kill-line-backwards)
+         ;; ("s-o" . crux-smart-open-line-above)
+         ;; ([remap move-beginning-of-line] . crux-move-beginning-of-line)
+         ([(shift return)] . crux-smart-open-line)
+         ([(control shift return)] . crux-smart-open-line-above)
+         ;; ([remap kill-whole-line] . crux-kill-whole-line)
+         ;; ("C-c s" . crux-ispell-word-then-abbrev)
+         ))
+
+(use-package transpose-frame
+  :ensure t
+  :disabled
+  :bind ("C-x t" . transpose-frame))
+
+(use-package avy
+  :ensure t
+  :bind (;;("C-," . avy-goto-word-or-subword-1)
+         ("C-," . avy-goto-char)
+         )
+  :config
+  (setq avy-background t))
+
+
+(use-package projectile
+  :ensure t
+  :after helm
+  :bind-keymap ("C-c p" . projectile-command-map)
+  :config
+  (setq projectile-completion-system 'helm)
+  (projectile-mode +1))
 
 (use-package magit
   :ensure t
   :bind (("C-x g" . magit-status)))
-
-(use-package git-timemachine
-  :ensure t)
-
-(use-package projectile
-  :ensure t
-  :init
-  (setq projectile-completion-system 'ivy)
-  :bind-keymap ("C-c p" . projectile-command-map)
-  :config
-  (projectile-mode +1)
-  ;; (defadvice projectile-project-root (around ignore-remote first activate)
-  ;;   (unless (file-remote-p default-directory) ad-do-it))
-  ;; (setq projectile-mode-line "Projectile")
-  )
 
 (use-package expand-region
   :ensure t
@@ -307,8 +334,7 @@
 (use-package exec-path-from-shell
   :ensure t
   :config
-  (when (memq window-system '(mac ns))
-    (exec-path-from-shell-initialize)))
+  (exec-path-from-shell-initialize))
 
 (use-package move-text
   :ensure t
@@ -316,15 +342,8 @@
   (([(meta up)] . move-text-up)
    ([(meta down)] . move-text-down)))
 
-(use-package rainbow-delimiters
-  :ensure t)
-
-(use-package rainbow-mode
-  :ensure t
-  :config
-  (add-hook 'prog-mode-hook #'rainbow-mode))
-
 (use-package whitespace
+  :ensure t
   :disabled
   :init
   (dolist (hook '(prog-mode-hook text-mode-hook))
@@ -334,43 +353,6 @@
   (setq whitespace-line-column 80) ;; limit line length
   (setq whitespace-style '(face tabs empty trailing lines-tail)))
 
-(use-package markdown-mode
-  :ensure t
-  :commands (markdown-mode gfm-mode)
-  :mode (("README\\.md\\'" . gfm-mode)
-         ("\\.md\\'" . markdown-mode)
-         ("\\.markdown\\'" . markdown-mode))
-  :init (setq markdown-command "multimarkdown"))
-
-;; Useful for yaml/json
-(use-package indent-tools
-  :ensure t
-  :mode ("\\.yaml?\\'" "\\.json\\'")
-  :config
-  (global-set-key (kbd "C-c >") 'indent-tools-hydra/body))
-
-;; (use-package yaml-mode
-;;   :mode ("\\.yaml?\\'")
-;;   :ensure t)
-
-(use-package company
-  :ensure t
-  :config
-  (setq company-idle-delay 0.5)
-  (setq company-show-numbers t)
-  (setq company-tooltip-limit 10)
-  (setq company-minimum-prefix-length 2)
-  (setq company-tooltip-align-annotations t)
-  ;; invert the navigation direction if the the completion popup-isearch-match
-  ;; is displayed on top (happens near the bottom of windows)
-  ;;  (setq company-tooltip-flip-when-above t)
-  (global-company-mode))
-
-(use-package flycheck
-  :ensure t
-  :config
-  (add-hook 'after-init-hook #'global-flycheck-mode))
-
 (use-package super-save
   :ensure t
   :config
@@ -379,9 +361,7 @@
 (use-package diff-hl
   :ensure t
   :config
-  (global-diff-hl-mode +1)
-  (add-hook 'dired-mode-hook 'diff-hl-dired-mode)
-  (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh))
+  (global-diff-hl-mode +1))
 
 (use-package which-key
   :ensure t
@@ -396,131 +376,176 @@
         `((".*" . ,temporary-file-directory)))
   (setq undo-tree-auto-save-history t))
 
-(use-package ivy
+(use-package smart-mode-line
+  :custom
+  (sml/no-confirm-load-theme t)
+  (sml/theme 'respectful)
+  (sml/name-width 32)
+  (sml/shorten-modes nil)
+  (sml/replacer-regexp-list nil)
+  :config (sml/setup))
+
+(defun remove-dos-eol ()
+  "Do not show ^M in files containing mixed UNIX and DOS line endings."
+  (interactive)
+  (setq buffer-display-table (make-display-table))
+  (aset buffer-display-table ?\^M []))
+(add-hook 'prog-mode-hook 'remove-dos-eol)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;;; packages for programming language
+(use-package yasnippet
+  :ensure t
+  :commands yas-minor-mode
+  :bind ("C-c s" . yas-insert-snippet)
+  :hook (prog-mode . yas-minor-mode))
+
+(use-package company
   :ensure t
   :config
-  (ivy-mode 1)
-  (setq ivy-use-virtual-buffers t)
-  (setq enable-recursive-minibuffers t)
-  (global-set-key (kbd "C-c C-r") 'ivy-resume)
-  (global-set-key (kbd "<f6>") 'ivy-resume))
+  (setq company-idle-delay 0.5)
+  (setq company-show-numbers t)
+  (setq company-minimum-prefix-length 1)
+  ;; (setq company-tooltip-limit 10)
+  ;; (setq company-tooltip-align-annotations t)
+  ;; invert the navigation direction if the the completion popup-isearch-match
+  ;; is displayed on top (happens near the bottom of windows)
+  ;;  (setq company-tooltip-flip-when-above t)
+  (global-company-mode))
 
-(use-package swiper
+(use-package flycheck
   :ensure t
   :config
-  (global-set-key "\C-s" 'swiper))
+  (global-flycheck-mode))
 
-(use-package counsel
+(use-package lsp-mode
+  :ensure t
+  :hook (go-mode javascript-mode php-mode html-mode)
+  :bind (("M-?" . lsp-find-references)
+         ("<backtab>" . lsp-format-buffer))
+  )
+
+(use-package lsp-ui
   :ensure t
   :config
-  ;;  (global-set-key (kbd "M-x") 'counsel-M-x)
-  ;;  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
-  (global-set-key (kbd "<f1> f") 'counsel-describe-function)
-  (global-set-key (kbd "<f1> v") 'counsel-describe-variable)
-  (global-set-key (kbd "<f1> l") 'counsel-find-library)
-  (global-set-key (kbd "<f2> i") 'counsel-info-lookup-symbol)
-  (global-set-key (kbd "<f2> u") 'counsel-unicode-char)
-  ;;  (global-set-key (kbd "C-c g") 'counsel-git)
-  ;;  (global-set-key (kbd "C-c j") 'counsel-git-grep)
-  (global-set-key (kbd "C-c a") 'counsel-ag)
-  (global-set-key (kbd "C-c l") 'counsel-locate)
-  (define-key minibuffer-local-map (kbd "C-r") 'counsel-minibuffer-history))
+  (add-hook 'lsp-mode-hook #'lsp-ui-mode))
 
+(use-package company-lsp
+  :ensure t
+  :config
+  (setq company-lsp-enable-recompletion t)
+  (add-to-list 'company-backends 'company-lsp))
+
+;; -------------------- BEGINE C -------------------------------
+(use-package cquery
+  :ensure t
+  :config
+  (add-hook 'c-mode-common-hook #'lsp)
+  (setq cquery-executable "/usr/local/bin/bin/cquery")
+  (setq cquery-extra-init-params '(:completion (:detailedLabel t))))
+;; -------------------- END C -------------------------------
+
+
+;; -------------------- BEGINE GO -------------------------------
+;; Set up before-save hooks to format buffer and add/delete imports.
+;; Make sure you don't have other gofmt/goimports hooks enabled.
+(defun lsp-go-install-save-hooks ()
+  (add-hook 'c-mode-common-hook #'lsp)
+  (add-hook 'before-save-hook #'lsp-format-buffer t t)
+  (add-hook 'before-save-hook #'lsp-organize-imports t t))
+(add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
+;; -------------------- END GO -------------------------------
+
+
+;; -------------------- BEGIN CONF -------------------------------
+(use-package conf-mode
+  :mode ("\\.cnf\\'" "\\.ini\\'" ))
+;; -------------------- END CONF -------------------------------
+
+
+;; -------------------- BEGIN MARKDOWN -------------------------------
+(use-package markdown-mode
+  :ensure t
+  :commands (markdown-mode gfm-mode)
+  :mode (("README\\.md\\'" . gfm-mode)
+         ("\\.md\\'" . markdown-mode)
+         ("\\.markdown\\'" . markdown-mode))
+  :config
+  (setq markdown-command "multimarkdown"))
+;; -------------------- BEGIN MARKDOWN -------------------------------
+
+
+;; -------------------- BEGIN WEB -------------------------------
 (use-package web-mode
   :ensure t
+  :disabled
   :mode ("\\.html?\\'" "\\.css\\'" "\\.php\\'" "\\.js\\'" )
   :config
   (setq web-mode-enable-auto-indentation nil))
-
-(use-package irony
-  :ensure t
-  :commands irony-mode
-  :bind ("<backtab>" . clang-format-buffer)
-  :init
-  (add-hook 'c++-mode-hook 'irony-mode)
-  (add-hook 'c-mode-hook 'irony-mode)
-  (defun my-irony-mode-hook ()
-    (setq company-backends '(company-irony-c-headers company-irony))
-    (setq irony-additional-clang-options '("-std=c++14")))
-  (add-hook 'irony-mode-hook 'my-irony-mode-hook)
-  (add-hook 'irony-mode-hook 'irony-cdb-autosetup-compile-options))
+;; -------------------- BEGIN WEB -------------------------------
 
 
 (use-package elpy
   :ensure t
-  :init
-  (add-hook 'python-mode 'elpy-mode)
-  ;;  (elpy-enable)
+  :disabled
   :config
+  (add-hook 'python-mode 'elpy-mode)
   (setq elpy-rpc-python-command "python3")
   (setq python-shell-interpreter "python3")
   (setq python-shell-interpreter-args "-i"))
 
-(use-package helm
-  :ensure t
-  :init
-  :bind (("M-x" . helm-M-x)
-         ("C-x b" . helm-buffers-list)
-         ("C-r" . helm-occur)
-         ([f5] . helm-find-files)
-         ([f6] . helm-recentf))
-  :config
-  (helm-mode 1))
-
-(use-package yasnippet-snippets
-  :ensure t)
-
-(use-package yasnippet
-  :ensure t
-  :bind ("C-c s" . company-yasnippet))
-
-(use-package transpose-frame
-  :ensure t
-  :bind ("C-x t" . transpose-frame))
-
-(use-package avy
-  :ensure t
-  :bind (("C-." . avy-goto-word-or-subword-1)
-         ("C-," . avy-goto-char))
-  :config
-  (setq avy-background t))
-
-(use-package crux
-  :ensure t
-  :bind (
-         ;; ("C-c o" . crux-open-with)
-         ;; ("M-o" . crux-smart-open-line)
-         ("C-c n" . crux-cleanup-buffer-or-region)
-         ;; ("C-c f" . crux-recentf-find-file)
-         ("C-M-z" . crux-indent-defun)
-         ;; ("C-c u" . crux-view-url)
-         ;; ("C-c e" . crux-eval-and-replace)
-         ;; ("C-c w" . crux-swap-windows)
-         ("C-c D" . crux-delete-file-and-buffer)
-         ("C-c r" . crux-rename-buffer-and-file)
-         ;; ("C-c t" . crux-visit-term-buffer)
-         ("C-c k" . crux-kill-other-buffers)
-         ("C-c TAB" . crux-indent-rigidly-and-copy-to-clipboard)
-         ("C-c I" . crux-find-user-init-file)
-         ;; ("C-c S" . crux-find-shell-init-file)
-         ;; ("s-r" . crux-recentf-find-file)
-         ;; ("s-j" . crux-top-join-line)
-         ;; ("C-^" . crux-top-join-line)
-         ;; ("s-k" . crux-kill-whole-line)
-         ;; ("C-<backspace>" . crux-kill-line-backwards)
-         ;; ("s-o" . crux-smart-open-line-above)
-         ;; ([remap move-beginning-of-line] . crux-move-beginning-of-line)
-         ([(shift return)] . crux-smart-open-line)
-         ([(control shift return)] . crux-smart-open-line-above)
-         ([remap kill-whole-line] . crux-kill-whole-line)
-         ;; ("C-c s" . crux-ispell-word-then-abbrev)
-         ))
-
 (use-package slime
   :ensure t
+  :disabled
   :config
   (load (expand-file-name "~/quicklisp/slime-helper.el"))
   (setq inferior-lisp-program "sbcl"))
+
+(global-set-key (kbd "C-c e") 'eshell)
+
 
 ;; config changes made through the customize UI will be stored here
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
