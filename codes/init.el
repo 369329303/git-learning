@@ -58,7 +58,7 @@
       scroll-preserve-screen-position 1)
 
 ;; hide scroll bar
-(toggle-scroll-bar -1)
+(scroll-bar-mode -1)
 
 
 ;; mode line settings
@@ -115,7 +115,7 @@
 (set-keyboard-coding-system 'utf-8)
 
 
-(global-set-key (kbd "C-x ;") 'comment-line)
+(subword-mode)
 
 ;; switch between .c and .h file quickly
 ;; (global-set-key (kbd "C-c o") 'ff-find-other-file)
@@ -270,7 +270,7 @@
          ;; ("C-c u" . crux-view-url)
          ;; ("C-c e" . crux-eval-and-replace)
          ;; ("C-c w" . crux-swap-windows)
-         ("C-c d" . crux-duplicate-current-line-or-region)
+         ("C-c u" . crux-duplicate-current-line-or-region)
          ("C-c M-d" . crux-duplicate-and-comment-current-line-or-region)
          ("C-c D" . crux-delete-file-and-buffer)
          ("C-c n" . crux-rename-buffer-and-file)
@@ -296,7 +296,6 @@
 
 (use-package transpose-frame
   :ensure t
-  :disabled
   :bind ("C-x t" . transpose-frame))
 
 (use-package avy
@@ -307,14 +306,19 @@
   :config
   (setq avy-background t))
 
-
 (use-package projectile
   :ensure t
   :after helm
   :bind-keymap ("C-c p" . projectile-command-map)
   :config
-  (setq projectile-completion-system 'helm)
+  ;; (setq projectile-completion-system 'helm)
   (projectile-mode +1))
+
+(use-package helm-projectile
+  :ensure t
+  :after projectile
+  :config
+  (helm-projectile-on))
 
 (use-package magit
   :ensure t
@@ -393,11 +397,17 @@
 (add-hook 'prog-mode-hook 'remove-dos-eol)
 
 
+(use-package docker
+  :ensure
+  :bind ("C-c d" . docker))
 
+(use-package eshell-bookmark
+  :after eshell
+  :config
+  (add-hook 'eshell-mode-hook #'eshell-bookmark-setup))
 
-
-
-
+(use-package rfc-mode
+  :ensure)
 
 
 
@@ -446,14 +456,9 @@
 (use-package company
   :ensure t
   :config
-  (setq company-idle-delay 0.5)
+  (setq company-idle-delay 0)
   (setq company-show-numbers t)
   (setq company-minimum-prefix-length 1)
-  ;; (setq company-tooltip-limit 10)
-  ;; (setq company-tooltip-align-annotations t)
-  ;; invert the navigation direction if the the completion popup-isearch-match
-  ;; is displayed on top (happens near the bottom of windows)
-  ;;  (setq company-tooltip-flip-when-above t)
   (global-company-mode))
 
 (use-package flycheck
@@ -463,9 +468,11 @@
 
 (use-package lsp-mode
   :ensure t
-  :hook (go-mode javascript-mode php-mode html-mode)
+  ;; :hook (go-mode js-mode php-mode html-mode)
   :bind (("M-?" . lsp-find-references)
          ("<backtab>" . lsp-format-buffer))
+  :config
+  (setq lsp-prefer-flymake nil)
   )
 
 (use-package lsp-ui
@@ -478,26 +485,6 @@
   :config
   (setq company-lsp-enable-recompletion t)
   (add-to-list 'company-backends 'company-lsp))
-
-;; -------------------- BEGINE C -------------------------------
-(use-package cquery
-  :ensure t
-  :config
-  (add-hook 'c-mode-common-hook #'lsp)
-  (setq cquery-executable "/usr/local/bin/bin/cquery")
-  (setq cquery-extra-init-params '(:completion (:detailedLabel t))))
-;; -------------------- END C -------------------------------
-
-
-;; -------------------- BEGINE GO -------------------------------
-;; Set up before-save hooks to format buffer and add/delete imports.
-;; Make sure you don't have other gofmt/goimports hooks enabled.
-(defun lsp-go-install-save-hooks ()
-  (add-hook 'c-mode-common-hook #'lsp)
-  (add-hook 'before-save-hook #'lsp-format-buffer t t)
-  (add-hook 'before-save-hook #'lsp-organize-imports t t))
-(add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
-;; -------------------- END GO -------------------------------
 
 
 ;; -------------------- BEGIN CONF -------------------------------
@@ -544,7 +531,15 @@
   (load (expand-file-name "~/quicklisp/slime-helper.el"))
   (setq inferior-lisp-program "sbcl"))
 
-(global-set-key (kbd "C-c e") 'eshell)
+
+(defun spEs()
+  "..."
+  (interactive)
+  (split-window-vertically)
+  (other-window 1)
+  (eshell))
+
+(global-set-key (kbd "C-c e") 'spEs)
 
 
 ;; config changes made through the customize UI will be stored here
