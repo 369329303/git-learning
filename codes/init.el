@@ -1,8 +1,16 @@
+;;; Author: Jack Xue
+;;; Thanks to Bozhidar Batsov.
+;;; https://github.com/bbatsov/emacs.d/blob/master/init.el
+
 (require 'package)
 
 ;; Add melpa package source when using package list
+;; (setq package-archives '(("melpa" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/melpa/")
+;;                          ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
 (setq package-archives '(("melpa" . "https://melpa.org/packages/")
                          ("gnu" . "https://elpa.gnu.org/packages/")))
+
+
 ;; keep the installed packages in .emacs.d
 (setq package-user-dir (expand-file-name "elpa" user-emacs-directory))
 
@@ -35,7 +43,7 @@
 ;; in a tty tool-bar-mode does not properly auto-load, and is
 ;; already disabled anyway
 (tool-bar-mode -1)
-
+;; (menu-bar-mode -1)
 ;; the blinking cursor is nothing, but an annoyance
 (blink-cursor-mode -1)
 
@@ -49,7 +57,7 @@
 ;; (add-hook 'text-mode-hook 'auto-fill-mode)
 
 ;; auto maximize window
-;; (add-to-list 'default-frame-alist '(fullscreen . maximized))
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 
 ;; nice scrolling
@@ -67,7 +75,7 @@
 (size-indication-mode t)
 
 ;; show line number
-;; (global-linum-mode t)
+(global-linum-mode t)
 
 ;; enable y/n answers
 (fset 'yes-or-no-p 'y-or-n-p)
@@ -137,6 +145,15 @@
 
 
 ;;; packages for move and search
+(use-package tramp
+  :config
+  (setq tramp-completion-reread-directory-timeout nil)
+  (setq vc-ignore-dir-regexp
+        (format "\\(%s\\)\\|\\(%s\\)"
+                vc-ignore-dir-regexp
+                tramp-file-name-regexp))
+  )
+
 (use-package paren
   :config
   (show-paren-mode +1))
@@ -375,10 +392,13 @@
 (use-package undo-tree
   :ensure t
   :config
+(global-undo-tree-mode) 
   ;; autosave the undo-tree history
-  (setq undo-tree-history-directory-alist
-        `((".*" . ,temporary-file-directory)))
-  (setq undo-tree-auto-save-history t))
+  ;; (undo-tree-mode t)
+  ;; (setq undo-tree-history-directory-alist
+  ;; (setq undo-tree-auto-save-history t))
+        ;; `((".*" . ,temporary-file-directory)))
+  )
 
 (use-package smart-mode-line
   :custom
@@ -409,7 +429,8 @@
 (use-package rfc-mode
   :ensure)
 
-
+(use-package rainbow-delimiters
+  :ensure)
 
 
 
@@ -463,33 +484,71 @@
 
 (use-package flycheck
   :ensure t
+  :disabled
   :config
-  (global-flycheck-mode))
+  (global-flycheck-mode)
+  )
 
 (use-package lsp-mode
   :ensure t
   ;; :hook (go-mode js-mode php-mode html-mode)
-  :bind (("M-?" . lsp-find-references)
-         ("<backtab>" . lsp-format-buffer))
+  ;; :commands lsp
+  :commands (lsp lsp-deferred)
+  :hook (go-mode . lsp-deferred)
+  :hook (php-mode . lsp-deferred)
+  :hook (rust-mode . lsp-deferred)
+  :bind (("M-?" . lsp-find-references))
+  ("M-*" . lsp-goto-implementation)
+  ("M-k" . lsp-ui-doc-focus-frame)
+  ;;        ("<backtab>" . lsp-format-buffer))
   :config
-  (setq lsp-prefer-flymake nil)
+  (setq lsp-file-watch-threshold 10000)
   )
 
 (use-package lsp-ui
   :ensure t
-  :config
-  (add-hook 'lsp-mode-hook #'lsp-ui-mode))
+  :commands lsp-ui-mode)
 
 (use-package company-lsp
   :ensure t
+  :commands company-lsp)
+
+(use-package helm-lsp
+  :ensure t
+  :commands helm-lsp-workspace-symbol)
+
+(use-package lsp-treemacs
+  :ensure t
+  :commands lsp-treemacs-errors-list)
+
+;; -------------------- BEGIN C/C++ -------------------------------
+(use-package ccls
+  :hook ((c-mode c++-mode objc-mode cuda-mode) .
+         (lambda () (require 'ccls) (lsp)))
   :config
-  (setq company-lsp-enable-recompletion t)
-  (add-to-list 'company-backends 'company-lsp))
+  (setq ccls-executable "/usr/bin/ccls"))
+;; -------------------- END C/C++ -------------------------------
+
+
+;; -------------------- START Go -------------------------------
+;; Set up before-save hooks to format buffer and add/delete imports.
+;; Make sure you don't have other gofmt/goimports hooks enabled.
+(defun lsp-go-install-save-hooks ()
+  (add-hook 'before-save-hook #'lsp-format-buffer t t)
+  (add-hook 'before-save-hook #'lsp-organize-imports t t))
+(add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
+;; -------------------- END Go ---------------------------------
+
+;; -------------------- BEGIN Lisp ---------------------------------
+(load (expand-file-name "~/quicklisp/slime-helper.el"))
+(setq inferior-lisp-program "/usr/bin/sbcl")
+;; -------------------- END Lisp ---------------------------------
+
 
 
 ;; -------------------- BEGIN CONF -------------------------------
 (use-package conf-mode
-  :mode ("\\.cnf\\'" "\\.ini\\'" ))
+  :mode ("\\.cnf\\'" "\\.ini\\'" "\\.service" ))
 ;; -------------------- END CONF -------------------------------
 
 
@@ -514,6 +573,14 @@
   (setq web-mode-enable-auto-indentation nil))
 ;; -------------------- BEGIN WEB -------------------------------
 
+
+;; -------------------- BEGIN WEB -------------------------------
+(use-package nginx-mode
+  :ensure t)
+;; -------------------- BEGIN WEB -------------------------------
+
+(use-package protobuf-mode
+  :ensure t)
 
 (use-package elpy
   :ensure t

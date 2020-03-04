@@ -62,16 +62,19 @@ C-x C-f /ssh:user@192.168.1.5:/usr/share/nginx/html/index.html
 ``` bash
 生成自签证书：openssl req -newkey rsa:2048 -nodes -keyout cakey.pem -x509 -days 3650 -out cacert.pem -subj="/CN=test"
 生成2048位的RSA密钥：openssl genrsa -out example.key 2048
+提取出对应的私钥: openssl rsa -in example.key -pubout -out example.pub
 生成证书CSR: openssl req -new -key example.key -out example.csr -subj="/CN=www.au.com"
-显示一张CSR的文本内容： openssl req -in example.org.csr -noout -text
-显示一张证书的文本内容： openssl x509 -in example.org.crt -noout -text
+显示一张CSR的文本内容： openssl req -in example.csr -noout -text
+显示一张证书的文本内容： openssl x509 -in example.crt -noout -text
 -out: 是否显示文件内容
 对CSR文件签名：openssl ca -config openssl.cnf -in example.csr -out example.crt
   使用x509模块: openssl x509 -req -days 360 -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
 获取带有SNI的服务器证书：
     openssl s_client -showcerts -servername www.example.com -connect www.example.com:443 </dev/null | openssl x509 -noout -text
     openssl s_client -showcerts -servername www.github.com -connect www.github.com:443 < /dev/null | openssl x509 -outform PEM > www.github.com.pem
-生成pfx/p12个人证书：openssl pkcs12 -export -out mycert.p12 -inkey mykey.pem -in mycert.pem -certfile more.crt
+生成pfx/p12证书：openssl pkcs12 -export -out mycert.p12 -inkey mykey.pem -in mycert.pem -certfile more.crt
+从pfx/p12证书中提取私钥: openssl pkcs12 -nodes -in mycert.p12 -nocerts -out pri.pem
+从pfx/p12证书中提取公钥: openssl pkcs12 -in mycert.p12 -clcerts -nokeys -out pub.pem
 
 ```
 
