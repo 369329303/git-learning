@@ -75,7 +75,7 @@
 (size-indication-mode t)
 
 ;; show line number
-(global-linum-mode t)
+;; (global-linum-mode t)
 
 ;; enable y/n answers
 (fset 'yes-or-no-p 'y-or-n-p)
@@ -125,18 +125,6 @@
 
 (subword-mode)
 
-;; switch between .c and .h file quickly
-;; (global-set-key (kbd "C-c o") 'ff-find-other-file)
-
-;; smart tab behavior - indent or complete
-;; (setq tab-always-indent 'complete)
-
-;; hide show minor mode
-;; (add-hook 'prog-mode-hook
-;;           'hs-minor-mode)
-
-;; (add-hook 'prog-mode-hook
-;;           'highlight-symbol-nav-mode)
 
 (unless (package-installed-p 'use-package)
   (package-install 'use-package))
@@ -244,6 +232,7 @@
          ("C-h y" . helm-show-kill-ring)
          ("C-h m" . helm-all-mark-rings)
          ("C-h e" . helm-eshell-history)
+         ("C-h k" . describe-key-briefly)
          ("C-x f" . helm-find-files)
          ("C-x b" . helm-mini)
          ("C-h i" . helm-imenu))
@@ -266,14 +255,14 @@
   ;;  (global-set-key (kbd "C-x C-f") 'counsel-find-file)
   (global-set-key (kbd "<f1> f") 'counsel-describe-function)
   (global-set-key (kbd "<f1> v") 'counsel-describe-variable)
-  (global-set-key (kbd "<f1> k") 'describe-bindings)
+  (global-set-key (kbd "<f1> k") 'describe-key-briefly)
   (global-set-key (kbd "<f1> l") 'counsel-find-library)
   (global-set-key (kbd "<f2> i") 'counsel-info-lookup-symbol)
   (global-set-key (kbd "<f2> u") 'counsel-unicode-char)
   ;;  (global-set-key (kbd "C-c g") 'counsel-git)
   ;;  (global-set-key (kbd "C-c j") 'counsel-git-grep)
   (global-set-key (kbd "C-c a") 'counsel-ag)
-  (global-set-key (kbd "C-c l") 'counsel-locate)
+  (global-set-key (kbd "C-c f") 'counsel-locate)
   (define-key minibuffer-local-map (kbd "C-r") 'counsel-minibuffer-history))
 
 (use-package crux
@@ -283,7 +272,7 @@
          ;; ("M-o" . crux-smart-open-line)
          ;; ("C-c n" . crux-cleanup-buffer-or-region)
          ;; ("C-c f" . crux-recentf-find-file)
-         ("C-M-n" . crux-indent-defun)
+         ;; ("C-M-n" . crux-indent-defun)
          ;; ("C-c u" . crux-view-url)
          ;; ("C-c e" . crux-eval-and-replace)
          ;; ("C-c w" . crux-swap-windows)
@@ -321,7 +310,8 @@
          ("C-," . avy-goto-char)
          )
   :config
-  (setq avy-background t))
+  (setq avy-background t)
+  (setq avy-case-fold-search nil))
 
 (use-package projectile
   :ensure t
@@ -387,7 +377,7 @@
 (use-package which-key
   :ensure t
   :config
-  (which-key-mode +1))
+  (which-key-mode))
 
 (use-package undo-tree
   :ensure t
@@ -489,21 +479,21 @@
   (global-flycheck-mode)
   )
 
+;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+(setq lsp-keymap-prefix "C-c l")
+
 (use-package lsp-mode
   :ensure t
-  ;; :hook (go-mode js-mode php-mode html-mode)
-  ;; :commands lsp
-  :commands (lsp lsp-deferred)
-  :hook (go-mode . lsp-deferred)
-  :hook (php-mode . lsp-deferred)
-  :hook (rust-mode . lsp-deferred)
-  :bind (("M-?" . lsp-find-references))
-  ("M-*" . lsp-goto-implementation)
-  ("M-k" . lsp-ui-doc-focus-frame)
-  ;;        ("<backtab>" . lsp-format-buffer))
+  :hook((go-mode . lsp)
+        (lsp-mode . lsp-enable-which-key-integration))
+  :commands lsp
+  :bind (("M-?" . lsp-find-references)
+         ("M-*" . lsp-goto-implementation)
+         ("M-k" . lsp-ui-doc-focus-frame))
   :config
   (setq lsp-file-watch-threshold 10000)
-  )
+  (setq gc-cons-threshold 100000000)
+  (setq read-process-output-max (* 1024 1024)))
 
 (use-package lsp-ui
   :ensure t
@@ -608,6 +598,8 @@
 
 (global-set-key (kbd "C-c e") 'spEs)
 
+;; (load "/home/jack/.emacs.d/mylisp/mymail.el")
+;; (load "/home/jack/.emacs.d/mylisp/mymu4e.el")
 
 ;; config changes made through the customize UI will be stored here
 (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
