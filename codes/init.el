@@ -43,7 +43,7 @@
 ;; in a tty tool-bar-mode does not properly auto-load, and is
 ;; already disabled anyway
 (tool-bar-mode -1)
-;; (menu-bar-mode -1)
+(menu-bar-mode -1)
 ;; the blinking cursor is nothing, but an annoyance
 (blink-cursor-mode -1)
 
@@ -57,7 +57,7 @@
 ;; (add-hook 'text-mode-hook 'auto-fill-mode)
 
 ;; auto maximize window
-(add-to-list 'default-frame-alist '(fullscreen . maximized))
+;; (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 
 ;; nice scrolling
@@ -75,7 +75,7 @@
 (size-indication-mode t)
 
 ;; show line number
-;; (global-linum-mode t)
+(global-linum-mode t)
 
 ;; enable y/n answers
 (fset 'yes-or-no-p 'y-or-n-p)
@@ -125,6 +125,7 @@
 
 (subword-mode)
 
+(load-theme 'solarized-light)
 
 (unless (package-installed-p 'use-package)
   (package-install 'use-package))
@@ -315,10 +316,11 @@
 
 (use-package projectile
   :ensure t
-  :after helm
-  :bind-keymap ("C-c p" . projectile-command-map)
+  ;; :after helm
   :config
-  ;; (setq projectile-completion-system 'helm)
+  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+  (setq projectile-completion-system 'ivy)
+  (setq projectile-sort-order 'recently-active)
   (projectile-mode +1))
 
 (use-package helm-projectile
@@ -411,13 +413,14 @@
   :ensure
   :bind ("C-c d" . docker))
 
-(use-package eshell-bookmark
-  :after eshell
-  :config
-  (add-hook 'eshell-mode-hook #'eshell-bookmark-setup))
+(use-package kubernetes
+  :ensure t
+  :commands (kubernetes-overview))
 
-(use-package rfc-mode
-  :ensure)
+;; If you want to pull in the Evil compatibility package.
+(use-package kubernetes-evil
+  :ensure t
+  :after kubernetes)
 
 (use-package rainbow-delimiters
   :ensure)
@@ -484,9 +487,11 @@
 
 (use-package lsp-mode
   :ensure t
-  :hook((go-mode . lsp)
-        (lsp-mode . lsp-enable-which-key-integration))
   :commands lsp
+  :hook((go-mode . lsp)
+        (python-mode . lsp)
+        (sh-mode . lsp)
+        (lsp-mode . lsp-enable-which-key-integration))
   :bind (("M-?" . lsp-find-references)
          ("M-*" . lsp-goto-implementation)
          ("M-k" . lsp-ui-doc-focus-frame))
@@ -507,9 +512,6 @@
   :ensure t
   :commands helm-lsp-workspace-symbol)
 
-(use-package lsp-treemacs
-  :ensure t
-  :commands lsp-treemacs-errors-list)
 
 ;; -------------------- BEGIN C/C++ -------------------------------
 (use-package ccls
@@ -530,16 +532,14 @@
 ;; -------------------- END Go ---------------------------------
 
 ;; -------------------- BEGIN Lisp ---------------------------------
-(load (expand-file-name "~/quicklisp/slime-helper.el"))
-(setq inferior-lisp-program "/usr/bin/sbcl")
+;; (load (expand-file-name "~/quicklisp/slime-helper.el"))
+;; (setq inferior-lisp-program "/usr/bin/sbcl")
 ;; -------------------- END Lisp ---------------------------------
 
 
 
-;; -------------------- BEGIN CONF -------------------------------
 (use-package conf-mode
   :mode ("\\.cnf\\'" "\\.ini\\'" "\\.service" ))
-;; -------------------- END CONF -------------------------------
 
 
 ;; -------------------- BEGIN MARKDOWN -------------------------------
@@ -564,22 +564,19 @@
 ;; -------------------- BEGIN WEB -------------------------------
 
 
-;; -------------------- BEGIN WEB -------------------------------
 (use-package nginx-mode
   :ensure t)
-;; -------------------- BEGIN WEB -------------------------------
 
 (use-package protobuf-mode
   :ensure t)
 
-(use-package elpy
+(use-package caddyfile-mode
   :ensure t
-  :disabled
+  :mode (("Caddyfile\\'" . caddyfile-mode)
+         ("caddy\\.conf\\'" . caddyfile-mode))
   :config
-  (add-hook 'python-mode 'elpy-mode)
-  (setq elpy-rpc-python-command "python3")
-  (setq python-shell-interpreter "python3")
-  (setq python-shell-interpreter-args "-i"))
+  (setq-local tab-width 4)
+  (setq-local indent-tabs-mode nil))
 
 (use-package slime
   :ensure t
