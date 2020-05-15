@@ -48,10 +48,6 @@ xargs: 将前一个输出作为下一个的输入
 -i: inplace替换，不输出到终端
 ```
 
-## 批量对一个目录DIR下文件从gbk转成utf-8,并放入新创建的newDIR目录中
-find DIR -type d -exec mkdir -p newDIR/{} \;
-find DIR -type f -exec iconv -f GBK -t UTF-8 {} -o newDIR/{} \;
-
 ## 对当前目录下的所有文件进行替换
 find . -type f -exec sed -i 's/foo/bar/g' {} +
 
