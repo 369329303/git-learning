@@ -130,6 +130,11 @@ golang 语言部分
             Len int
             Cap int
         }
+
+        type stringStruct struct { // 这是string的结构体，与slice相像，由于string不存在扩容，所有没有cap字段。
+	        str unsafe.Pointer
+	        len int
+        }
     3. 当切片非常大或者发生逃逸时，会被分配在堆上
     4. 扩容策略
         4.1 如果期望容量大于当前容量的两倍，直接使用期望容量
@@ -150,12 +155,12 @@ golang 语言部分
     2. interface{} 类型不是任意类型
         eface结构体表示不包含任何方法的结构体,iface结构体表示包含方法的结构体.
         type eface struct {
-            _type *_type
+            _type *_type    // 存储运行时类型
             data  unsafe.Pointer
         }
 
         type iface struct {
-            tab *itab
+            tab *itab       // itab结构体内部含有_type结构体。
             data unsafe.Pointerk
         }
     3. 指针类型的方法是无法被结构体类型对象调用的。
@@ -169,45 +174,62 @@ golang 语言部分
 grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基于HTTP/2协议设计，单TCP连接上多个双向Stream，头部压缩功能。
 调用模型：
     1. 客户端调用方法A，发起RPC调用
-    2. 对请求信息使用protobuf对数据进行序列化
+    2. 对请求信息使用protobuf对数据进行序列化，通过http/2协议通信
     3. 服务端收到请求后，反序列化，获得请求，执行业务逻辑处理并返回应答
     4. 对应答信息使用protobuf再次序列化然后发给客户端
 调用方式：
     1. 一元RPC
+        invoke()
+        客户端创建grpc的时候，就已经将数据发送过去，并阻塞等待数据到来。
     2. 服务端流式RPC
+        客户端创建grpc
+                        Send(主动关闭)
+        Recv
     3. 客户端流式RPC
+        客户端创建grpc
+        Send
+                        Recv
+        CloseAndRecv(阻塞，直到收到消息，主动关闭)
+                        SendAndClose
     4. 双向流式RPC
+        go Recv
+        Send
+                        Recv
+                        Send
+        SendClose（主动关闭）
 常见问题：
     1. grpc.Dial 是异步连接，状态为正在连接，但如果设置了grpc.WithBlock选项，就会阻塞等待直到连接建立。
-    2. 调用ClientConn不Close会导致内存泄漏
-    3. 如果不进行超时控制的话，短时间内不会有问题，但如果时间长了，就会造成内存泄漏
+    2. 调用ClientConn不Close会导致文件句柄过多，内存泄漏
+    3. 如果不进行超时控制的话，短时间内不会有问题，但如果时间长了，就会造成文件句柄过多，内存泄漏
     4. 默认的拦截器可以传递多个，但是只有第一个有用。
-    5. 频繁创建ClientConn会造成占用过多的文件句柄。
+    5. 频繁创建ClientConn会造成占用过多的文件句柄。对于需要大量创建，大量销毁的情形（比如http连接），可以考虑用一个Goroutine池。
     6. 客户端请求失败会重试，直到上下文取消，重试时间采用backoff算法，最大重试时间为120s。
-    7. gRPC的附加信息都会放在HEADERS帧中，数据放在DATA帧中
+    7. gRPC基于HTTP/2协议，附加信息都会放在HEADERS帧中，数据放在DATA帧中
 ```
 9. Go 中map的实现原理？
 ```
-    1. 采用桶装法
+    1. 采用桶装法（类似一个中间层，与redis的map类似）
         type hmap struct {
-            count     int       // 当前哈希表中的元素个数
+            count     int       // 当前哈希表中的元素个数（包括正常桶和溢出桶）
             flags     uint8
             B         uint8     // 当前哈希表持有的正常buckets数量的log值，len(buckets) == 2 ^ B 
             noverflow uint16    // 溢出桶的数量
             hash0     uint32    // 哈希的种子，为哈希函数的结构引入随机性，在创建哈希表的时候确定
 
             buckets    unsafe.Pointer   // 保存正常桶的基地址
-            oldbuckets unsafe.Pointer   // 哈希在扩容时用于保存之前buckets的基地址
-            nevacuate  uintptr          // 哈希表在扩容时，已经迁移走的元素数量
+            oldbuckets unsafe.Pointer   // 哈希在扩容时用于保存旧正常桶的基地址
+            nevacuate  uintptr          // 哈希表在扩容时，已经迁移到新桶的元素数量
 
-            extra *mapextra             // 包含了溢出桶的基地址
+            extra *mapextra             // 包含了溢出桶的基地址，正常桶和溢出桶在开始分配的时候是连续的，
+                                        // 但是之后由于溢出桶的元素逐渐增多，溢出桶会迁移到新的地址。
         }
 
+        // 每个桶内只装有8个元素，超出的元素放在溢出桶内，若对应溢出桶已满，则继续添加溢出桶
         type bmap struct {      // 桶的结构体，编译期间重构的结果
             topbits  [8]uint8   // 每个桶中存储8个键值対，存储了键的哈希值的高8位
             keys     [8]keytype
             values   [8]valuetype
-            pad      uintptr
+            pad      uintptr    // 不确定是否一定会有这个字段？
             overflow uintptr    // 下一个溢出桶的地址
         }
         如果哈希表中存储的元素主键增多，会使用溢出桶或者扩容
@@ -217,23 +239,23 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
         在编译期根据左边变量的个数来确定使用那种方法。
     3. 扩容策略
         3.1 触发条件
-            3.1.1 装载因子超过6.5，存储的元素数量/正常桶的数量，这个计算方法有点奇怪
-            3.1.2 哈希使用了太多的溢出桶
+            3.1.1 装载因子超过6.5，存储的所有元素数量/正常桶的数量，这个计算方法有点奇怪
+            3.1.2 使用了太多的溢出桶
         3.2 扩容不是一个原子过程，是一个增量过程，不会造成性能的巨大抖动。读操作不会触发扩容，写操作会触发扩容。
 ```
 10. set实现一下？
 11. Go 的栈内存管理？
 ```
-    1. i386 和 x86_64架构的机器上，默认的线程 栈大小是2MB。而Goroutine的栈大小最小为2KB，可以动态调整，最大达到1GB。
+    1. i386 和 x86_64架构的机器上，默认的线程栈大小是2MB。而Goroutine的栈大小最小为2KB，可以动态调整，最大达到1GB。
     2. 逃逸分析
-        2.1 逃逸分析是用来决定指针的动态作用域。Go语言编译器使用逃逸分析来决定哪些变量应该在栈上分配，哪些应该在堆上分配。
+        2.1 逃逸分析是用来决定指针的动态作用域，会不会超过当前栈。Go语言编译器使用逃逸分析来决定哪些变量应该在栈上分配，哪些应该在堆上分配。
         2.2 两个不变性：
             2.2.1 指向栈对象的指针不能够存在于堆中
             2.2.2 指向栈对象的指针不能够在在对象被回收后存活
         2.3 使用 go build --gcflags="-m -m" 来确定变量到底是分配在了哪里。
         2.4 一般函数返回的指针变量和非常大的变量会分配在堆上。
     3. 栈的动态扩容是通过栈分裂和栈增长实现的。
-    4. 对于<32KB 的对象，per M cache来分配，避免锁竞争；>32KB的对象，从全局栈中分配，还不够就从堆分配。
+    4. 对于<32KB 的对象，per M cache来分配，避免锁竞争；>=32KB的对象，从全局栈中分配，还不够就从堆分配。
 
 ```
 12. Go 的同步原语与锁
@@ -263,18 +285,17 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
 
 14. Go 系统监控
 ```
-    1. 任务
-        1.1 检查死锁
-        1.2 运行计时器： 获取下一个需要被触发的计时器
-        1.3 轮询网络：获取需要处理的到期文件描述符
-        1.4 抢占处理器：抢占运行时间较长的或者处于系统调用的Goroutine
-        1.5 垃圾回收：在满足条件时触发垃圾回收机制
+    1 检查死锁
+    2 运行计时器： 获取下一个需要被触发的计时器
+    3 轮询网络：获取需要处理的到期文件描述符
+    4 抢占处理器：抢占运行时间较长的或者处于系统调用的Goroutine
+    5 垃圾回收：在满足条件时触发垃圾回收机制
 ```
 15. Go 函数调用 
 ```
     1. 通过堆栈传递参数，入栈的顺序是从右到左
     2. 调用函数是都是传值。
-    3. 数组在进行参数传递的时候，实际上会拷贝一整份数组，但是在for-range的时候却不是拷贝，因此建议不要使用数组。
+    3. 数组在进行参数传递的时候，实际上会拷贝一整份数组，但是在for-range的时候却不是拷贝，因此建议不要使用数组。不过数组倒是可以很方便的实现环形队列。
 ```
 
 16. for 和 range
@@ -282,6 +303,15 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
     1. 可以快速遍历数组，切片，哈希表以及channel等集合类型
     2. range循环中，Go语言会在编译期将原切片或者数组赋值给一个新的变量ha，在赋值的过程中发生了拷贝，
        我们遍历的切片变量已经不是原来的切片变量了。
+        ha := a
+        hv1 := 0
+        hn := len(ha)
+        v1 := hv1
+        for ; hv1 < hn; hv1++ {
+            tmp := ha[hv1]
+            v1, v2 := hv1, tmp
+            ...
+        }
 ```
 
 17. Go 语言中 new 和 make的区别
@@ -291,13 +321,24 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
 ```
 
 操作系统部分：
-1. 死锁产生的条件及如何避免死锁？
+1. 死锁产生的四个必要条件及如何避免死锁？
+```
+    1. 互斥条件：一个资源只能被一个进程所占有
+    2. 占有并等待：一个进程因请求新的资源不满足而阻塞时，対已经获得的资源不释放
+    3. 不可强行占有：一个进程的资源只能主动释放，不能被动释放。
+    4. 循环等待条件：若干进程间形成循环等待的关系
+```
 2. 进程，线程，协程的区别？
+```
+    1. 进程是资源分配的基本单位，进程间通信通过IPC来通信
+    2. 线程是CPU调度的基本单位，同一进程内的多个线程共享所属进程的资源。拥有自己的栈，程序计数器。进程间通信通过共享内存。
+    3. 协程位于用户态，用户态程序负责调度，拥有自己的栈，程序计数器。可以通过channel来共享内存。更加安全，方便。
+```
 3. LVS有哪几种模式？各有什么特点？
 ```
-    3.1 NAT 模式：RS和DS位于同一个网段内，DS是RS的网关。请求和回答都得经过DS，DS是系统瓶颈。
-    3.2 TUN 模式：RS和DS通过IP管道来进行传输，可以不在同一个局域网内，有利于异地容灾。请求经过DS，但应答不经过DS。由于管道增加了数据量。
-    3.3 DR 模式： RS和DS位于同一个网段内，通过修改MAC地址来进行DS到多个RS的路由。请求经过DS，但应答不经过DS。目前应用的最多。
+    3.1 NAT 模式：RS和DS位于同一个网段内，DS是RS的网关。请求和回答都得经过DS，DS是系统瓶颈。使用了DNAT，类似于透明代理。
+    3.2 TUN 模式：RS和DS通过IP管道来进行传输，可以不在同一个局域网内，有利于异地容灾。请求经过DS，但应答不经过DS。由于使用了管道增加了数据量。
+    3.3 DR 模式（Direct Routing 直接路由）： RS和DS位于同一个网段内，通过修改MAC地址来进行DS到多个RS的路由。请求经过DS，但应答不经过DS。目前应用的最多。
 ```
 4. Keepalived介绍一下？
 ```
@@ -305,16 +346,25 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
         master会定时向slave发送VRRP通告信息，表明自己还活着。如果一段时间内没有收到，slave之间会通过VRRP通告来选取出一个新的master。
     4.2 VRRP数据包的目标IP地址必须是224.0.0.18（广播地址）.
     4.3 keepalived程序有三个进程。其中父进程负责内存管理。子进程1负责VRRP协议的实现，负责master/slave的切换。子进程2负责健康检查，如HTTP服务器是否存活。
-    4.4 虚拟IP的出现是根据master/slave的状态确定的。
+    4.4 虚拟IP的出现是根据master/slave的状态确定的。master上的虚拟IP出现在非lo网卡上，而slave上的虚拟IP出现在lo网卡上。
 ```
 
 网络方面：
 1. select, poll, epoll 之间的区别在哪里？
+```
+    1. select，时间复杂度O(n),监听一组描述符，仅仅知道有事件发生了，但并不知道具体是哪些文件描述符，只能够遍历。
+    2. poll，与select类似，时间复杂度O(n),区别仅在于没有了文件描述符数量的限制，因为是基于链表来存储的。
+    3. epoll, 时间复杂度O(1)，当epoll返回时，我们知道是哪些文件描述符准备好了，每个事件上都关联着文件描述符。
+        包括LT（Level Trigger）和ET（Edge Trigger）。
+        LT模式下，只要这个事件没有处理，每次都会返回这个事件。
+        ET模式下，仅仅只会返回一次
+        select和poll中，所有的文件描述符都会在内核态和用户态之间复制多次，造成浪费。而epoll并不需要，只需返回就绪态的文件描述符。
+```
 2. HTTP/1.1 于 HTTP/2 的区别？
 ```
     1. HTTP/1.1 是1999年提出的，HTTP/2 是2015年提出的。
     2. 影响HTTP网络请求的因素主要有两个，带宽和延迟。现在已经不是拨号上网的年待了，所以带宽不再是一个因素；延迟，DNS查询可以通过DNS缓存来解决。Head Of Line 阻塞，一个连接上无法跑多个请求都是问题。
-    3. 多路复用：HTTP/1.1的pipeline机制虽然可以在一个TCP连接上跑多个请求，但是无法并发，容易产生HOL阻塞。而HTTP/2的多路复用是将请求分散，当作流来处理，每个请求对应不同的流，实现了请求的并发，并不会造成HOL阻塞。
+    3. 多路复用：HTTP/1.1的pipeline(keep-alive)机制虽然可以在一个TCP连接上跑多个请求，但是无法并发，容易产生HOL阻塞。而HTTP/2的多路复用是将请求分散，当作流来处理，每个请求对应不同的流，实现了请求的并发，并不会造成HOL阻塞。
     4. 首部压缩 ：HTTP/1.1的首部是不压缩的，并且多个请求通常都包含相同的首部。这对于带宽和延迟都很浪费。而HTTP/2通过在客户端和服务端分别维护一个动态字典和一个静态字典，用字符代替请求头来传输，降低带宽和延迟。
     5. 服务器推送：HTTP/1.1中客户端请求main.html，服务端仅返回main.html,但是HTTP/2会同时返回main.html, main.css等。这样客户端下次请求main.css的时候直接在缓存中就可以找到了。
     6. 可以传递二进制信息
@@ -397,6 +447,8 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
     2. TCP是可靠的，UDP不可靠
     3. TCP报文比较大，UDP比较小
     4. TCP是面向字节流的，UDP是面向报文的。
+    5. 还有一个SCTP (Stream Control Transmission Protocol), 被称为TCPng, 不过目前支持的平台比较少。能够解决TCP Head of Line Blcok 问题。
+        允许在一个SCTP连接中跑多个流。LTE使用的就是这个协议。
 ```
 8. TIME-WAIT的作用？
 ```
@@ -412,7 +464,7 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
     1. 查询路由表，决定从哪个网卡出去。
     2. 判断是否在局域网内
         2.1 如果在局域网内，查询arp表，如果查到了，直接发出去；否则向局域网内发arp广播查询该IP地址对应的MAC地址，查到后缓存该IP-MAC対，并发出去。
-        2.2 如果不在局域网内，填入网关的MAC地址发出去。
+        2.2 如果不在局域网内，填入网关的MAC地址让网关转发出去。
 ```
 11. 建立一个socket要经过哪些步骤？
 ```
@@ -450,7 +502,7 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
     2. 密钥交换需要Server Certificate, ServerKeyExchange, Client Certificate, ClientKeyExchange四个消息。
     3. 第一个被加密的信息是Client Finished。
     4. SessionID 在ServerHello 中。
-    5. DHE能够提供FS (Forward Secrey) 前向安全，RSA不能够
+    5. DHE能够提供FS (Forward Secrey) 前向安全，DH,RSA不能够
     6. APLN存在ClientHello消息中，用来告诉服务器它所加密的上层协议类型。
     7. SNI存在ClientHello消息中，用来解决一个IP地址上多个域名的问题。
     8. Session重用通过Session ID和 Session Ticket的方式解决
@@ -551,6 +603,160 @@ Auth | {CertificateVerify*}
 
 数据库：
 1. Redis的数据结构有哪几种，它们的底层实现是什么？
+```
+    1. string
+
+        struct __attribute__ ((__packed__)) sdshdr8 {   // 可以存放2^8-1个字节
+            uint8_t len; /* used */
+            uint8_t alloc; /* excluding the header and null terminator */
+            unsigned char flags; /* 3 lsb of type, 5 unused bits */
+            char buf[];
+        };
+
+
+    2. list
+        typedef struct listNode {   // list节点定义
+            struct listNode *prev;  // 前指针
+            struct listNode *next;  // 后指针
+            void *value;    // 节点值
+        } listNode;
+
+        typedef struct listIter {   // 用于list遍历
+            listNode *next;
+            int direction;
+        } listIter;
+
+        typedef struct list {
+            listNode *head;     // list 头
+            listNode *tail;     // list 尾
+            void *(*dup)(void *ptr);    // 用来复制节点的值
+            void (*free)(void *ptr);    // 用来释放节点的值
+            int (*match)(void *ptr, void *key); // 判断节点的值是否和key所指向的对象相等
+            unsigned long len;  // list的长度
+        } list;
+
+
+    3. hash
+        数量少用ziplist，数量多用dict。
+        typedef struct dictEntry {
+            void *key;
+            union {
+                void *val;
+                uint64_t u64;
+                int64_t s64;
+                double d;
+            } v;
+            struct dictEntry *next;
+        } dictEntry;
+
+
+        typedef struct dictht {
+            dictEntry **table;
+            unsigned long size;     // dict的大小
+            unsigned long sizemask;
+            unsigned long used;     // dict中的元素数量
+        } dictht;
+
+        typedef struct dict {
+            dictType *type;
+            void *privdata;
+            dictht ht[2];           // 两个dict，dict[0]日常使用，dict[1]仅仅在扩容的时候才会占有空间
+            long rehashidx; /* rehashing not in progress if rehashidx == -1 */ // 在 <= rehashidx下，所有的旧桶都被迁移到了新桶
+            unsigned long iterators; /* number of iterators currently running */    // 対dict进行扫描
+        } dict;
+
+        在扩容/缩容期间，scan的时候可能会扫描出重复的值。但是不会楼扫。
+        在读/写的时候，如果处于rehash阶段，那么都会将旧桶中的元素分流到新桶中去。
+        发生哈希碰撞时，新加入的元素放在链的前部，因为新数据接下来访问的概率更高。
+    4. set
+        对于set中的元素类型都是整型，并且数量较少时，采用intset来实现。否则采用dict来实现。
+        对于dict来说，key是元素，value为null。
+        inset 是有序的，可以使用二分查找。
+        typedef struct intset {
+            uint32_t encoding;  // 数据编码，2/4/8字节
+            uint32_t length;    // inset 中元素的个数
+            int8_t contents[];  // 柔性数组，数组的总长度length * encoding
+        } intset;
+        交集运算：
+            1. 检查各个集合，一旦出现空集，立即停止运算，结果就是空集。
+            2. 対各个集合按照数量从小到大来排序。更快的删除掉元素。
+            3. 对于第一集合中的所有元素，只有当它在其余集合中均出现的时候才会被加入到目标集合
+        并集运算：
+            1. 遍历所有集合，将每个元素都加入到目标集合当中即可。
+        差集运算：
+            第一种算法：
+                1. 対所有集合按照数量从大到小的顺序排序，有更大的概率查找到元素
+                2. 遍历第一个集合中的所有元素，只有当此元素不存在于任何其它集合中时，才将此元素加入到目标集合中
+            第二种算法：
+                1. 将第一个集合中的所有元素放入到目标集合
+                2. 遍历后面所有的集合，如果存在其余集合中，就从目标集合中删除此元素，最后的目标集合就是结果了。
+    5. zset
+        /* ZSETs use a specialized version of Skiplists */
+        typedef struct zskiplistNode {      // skiplist 中的元素类型
+            sds ele;    // value
+            double score;   // key
+            struct zskiplistNode *backward; // 后向指针，仅仅level[0]有
+            struct zskiplistLevel {
+                struct zskiplistNode *forward; // 前向指针，每一个level都有
+                unsigned long span;     // 用来计算rank
+            } level[];
+        } zskiplistNode;
+
+        typedef struct zskiplist {      // skiplist定义
+            struct zskiplistNode *header, *tail; // 头尾元素
+            unsigned long length; // 长度
+            int level; // 元素到达的最高高度
+        } zskiplist;
+
+        typedef struct zset {
+            dict *dict;     // 一个dict
+            zskiplist *zsl;     // 一个skiplist
+        } zset;
+
+        zet 在元素数量较少时，采用ziplist来实现。在元素数量较大时，采用dict+skiplist来实现。
+        zset的时间复杂度是O(logn)，和平衡树相当。并且对于范围查找更叫快速。而不是向平衡树那样依靠中序遍历。
+        dict中保存elem-score対。而skiplist中保存score-elem対，对于排序更加快速。
+    6. ziplist
+        这是ziplist的内存布局，其中的entry相当复杂。
+        <zlbytes> <zltail> <zllen> <entry> <entry> ... <entry> <zlend>
+        zlbytes：整个ziplist的大小，包括zlbytes本身。
+        zltail：最后一个entry的偏移，可以快速删除最后一个元素。
+        zllen：ziplist中entry的数量
+        zlend：特殊的entry，标志着结束。值是0xFF.
+        ziplist 可以用来实现list，hash， zset
+
+        这是ziplist entry的内存布局。
+        <prevlen> <encoding> <entry-data>
+    7. quicklist
+        typedef struct quicklistNode {      // quicklist的节点
+            struct quicklistNode *prev;
+            struct quicklistNode *next;
+            unsigned char *zl;              // 数据指针，如果当前节点没有被压缩，那么它指向一个ziplist结构，否则指向一个quicklistLZF结构
+            unsigned int sz;             /* ziplist size in bytes */
+            unsigned int count : 16;     /* count of items in ziplist */
+            unsigned int encoding : 2;   /* RAW==1 or LZF==2 */
+            unsigned int container : 2;  /* NONE==1 or ZIPLIST==2 */
+            unsigned int recompress : 1; /* was this node previous compressed? */  // 当使用lindex的时候，需要判断这个节点是否被压缩了
+            unsigned int attempted_compress : 1; /* node can't compress; too small */
+            unsigned int extra : 10; /* more bits to steal for future usage */
+        } quicklistNode;
+
+        typedef struct quicklistLZF {
+            unsigned int sz; /* LZF size in bytes*/
+            char compressed[];
+        } quicklistLZF;
+
+        typedef struct quicklist {
+            quicklistNode *head;
+            quicklistNode *tail;
+            unsigned long count;        /* total count of all entries in all ziplists */
+            unsigned long len;          /* number of quicklistNodes */
+            int fill : QL_FILL_BITS;              /* fill factor for individual nodes */    // 用来配置list-max-ziplist-size的值，节点中entry的数量，或者节点本身的大小
+            unsigned int compress : QL_COMP_BITS; /* depth of end nodes not to compress;0=off */    // 用来配置list-compress-depth的值，2表示，两端各有两个节点不压缩。依次类推。
+            unsigned int bookmark_count: QL_BM_BITS;
+            quicklistBookmark bookmarks[];
+        } quicklist;
+```
 2. 聚簇索引和非聚簇索引介绍一下？
 ```
     1. 两者的区别在于叶子节点是否存放了一整行的数据
@@ -577,7 +783,7 @@ Auth | {CertificateVerify*}
 5. Redis 持久化有哪几种方式？
 ```
     1. RDB方式：默认开启，Redis会按照配置的指定时间将内存中的数据写入道磁盘上，创建一个dump.rdb文件，Redis启动时再恢复到内存。
-       Redis会fork出一个子进程，将当前父进程的数据库拷贝到子进程的内存中来，然后由子进程负责写入道临时文件，持久化的过程结束了，再用
+       Redis会fork出一个子进程，将当前父进程的数据库拷贝到子进程的内存中来，然后由子进程负责写入到临时文件，持久化的过程结束了，再用
        这个临时文件替换掉上次的快照文件成为新的快照。
     2. AOF方式：以日志的形式记录每条写操作，不记录读操作。Redis启动时会根据日志内容从头到尾的执行一遍，完成持久化。
        因为采用追加的方式，会使的文件越来越大，针对这个问题，新增了重写机制，当日志文件大到一定程度的时候，会fork出一条新进程遍历父进程
@@ -652,7 +858,7 @@ Auth | {CertificateVerify*}
 13. InnoDB存储引擎的四大特性
 ```
     1. 插入缓冲（Insert Buffer）：对于二级索引页的写操作，先保存在内存当中，等时机成熟在应用到二级索引页上。
-    2. 二次写（Double Write）：将脏页先写入到二次写缓冲当中，然后在写入道共享表空间，最后才写入到独立表空间。保证
+    2. 二次写（Double Write）：将脏页先写入到二次写缓冲当中，然后在写入到共享表空间，最后才写入到独立表空间。保证
        数据页的可靠性。
     3. 自适应哈希索引（Adaptive Hash Index）：一般来说，我们实现从二级索引当中获取主键值，然后在聚簇索引当中获取行数据。
        我们可以対二级索引中的索引和行数据建立一个哈希关系。从而加快超找速度。
@@ -662,7 +868,7 @@ Auth | {CertificateVerify*}
 14. char和varchar的区别？
 ```
     1. char是固定长度的，当varchar是变长的。
-    2. char(50)表示这个变量占有50个字节。而varchar(50)表示这个变量最多可以占50个字节，最少可以占0个字节。
+    2. char(50)表示这个变量占有50个字节。而varchar(50)表示这个变量最多可以占50个字节，最少可以占0个字节，但varchar需要一些额外空间来保存数据的长度。
 ```
 
 15. InnoDB 日志种类，事务是如何通过日志实现的？
@@ -723,7 +929,7 @@ Auth | {CertificateVerify*}
 21. MySQL有哪些索引类型？
 ```
     1. 普通索引：可重复
-    2. 唯一索引：不可重复
+    2. 唯一索引：不可重复，可为空
     3. 主键索引：不为空
     4. 全文索引：like %word%
     5. 复合索引：index(A,B,C),最左前缀匹配
@@ -738,9 +944,9 @@ Auth | {CertificateVerify*}
 ```
 23. MySQL主键，超键，候选键，外键？
 ```
-    1. 主键：可以唯一表示行数据的列元组，不可以有空值，也不可以重复。
+    1. 主键：可以唯一标识行数据的列元组，不可以有空值，也不可以重复。
     2. 候选键：可以唯一标识行数据的列元组，不存在冗余列。
-    3. 超键：存在冗余列。
+    3. 超键：存在冗余列。冗余列就是加不加都可以唯一标识行数据。
     4. 外键：另一个的主键。
 ```
 24. MySQL 视图的作用，视图可以更新吗？
@@ -781,6 +987,12 @@ Auth | {CertificateVerify*}
 27. MySQL 触发器
 ```
     1. 六种，before/after update/delete/insert.
+```
+28. Reids 雪崩，穿透，击穿？
+```
+    1. 雪崩：同一时刻，多个key过期。过期时间随机化。
+    2. 穿透：元素不存在id=-1。redis中设置为null
+    3. 击穿：热点数据，访问过多，当前节点当掉，然后由于故障转移，导致所有节点都挂掉。最后数据库也就挂掉了。限流，使用kafka中间件。
 ```
 
 
