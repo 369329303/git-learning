@@ -11,10 +11,10 @@ golang 语言部分
     3. TCMalloc和Go引入线程缓存(Thread Cache)，中心缓存(Central Cache)和页堆(Page Heap)三个组件来分级管理内存。
        线程缓存属于每一个独立的处理器P，它能够满足绝大多数的内存分配需求，因为不涉及多线程，所以也不需要互斥锁来保护内存，这能够减少锁竞争带来的性能损耗。
        当线程缓存不能够满足需求时，就会使用中心缓存作为补充解决小对象的内存分配问题；当遇到32KB以上的对象时，内存分配器就会选择页堆直接分配大量的内存。
-    4. 使用稀疏内存布局，移出了线性内存布局下堆大小的上线，还解决了C和Go混合使用时地址空间冲突问题。
+    4. 使用稀疏内存布局，移出了线性内存布局下堆大小的上限，还解决了C和Go混合使用时地址空间冲突问题。
     5. 每一个P都会被分配一个线程缓存 runtime.mcache 用于处理微对象和小对象的分配，它们持有内存管理单元 runtime.mspan.
        每个内存管理单元都会管理特定大小的对象，当内存管理单元不存在空闲对象时，就会从 runtime.mheap 持有的 134 个中心缓存 runtime.mcentral 中获取新的内存单元。
-       中心缓存从属于全局的堆结构体 runtime.mheap，他会从操作系统中申请内存。
+       中心缓存从属于全局的堆结构体 runtime.mheap，它会从操作系统中申请内存。
        Go语言的内存管理模块一共包含67种跨度类，每一个跨度类都会存储特定大小的对象，并且包含特定数量的页数.
        跨度类除了存储类别的ID之外，还会存储一个noscan标志位，该标志位表示对象是否包含指针，GC只会対包含指针的 runtime.mspan 进行扫描
     6. 线程缓存：runtime.mcache 是Go中的线程缓存，它会与线程上的处理器一一绑定，主要用来缓存用户程序申请的微小对象。每一个线程缓存都持有67*2个runtime.mspan
@@ -318,6 +318,49 @@ grpc是一个由Google开源的，高性能，支持多语言的RPC框架。基�
 ```
     1. make的作用是用来初始化内置的数据结构，包括slice, map, channel
     2. new 的作用是根据传入的类型分配一块内存空间并返回指向这块内存空间的指针
+```
+18. 从一个已经关闭的channel中继续读取数据，会读出什么？
+```
+    1. 如果channel中还有数据，那么就是这些剩余的数据。
+    2. 如果channel中没有数据，那么就是channel中数据类型的0值。
+```
+
+19. channel的实现原理？
+```
+    type hchan struct {
+        qcount   uint           // total data in the queue
+        dataqsiz uint           // size of the circular queue
+        buf      unsafe.Pointer // points to an array of dataqsiz elements
+        elemsize uint16         // 每个成员的大小
+        closed   uint32         // 是否已经关闭
+        elemtype *_type // element type
+        sendx    uint   // send index
+        recvx    uint   // receive index
+        recvq    waitq  // list of recv waiters
+        sendq    waitq  // list of send waiters
+
+        lock mutex      // 加锁，用以实现并发安全
+    }
+
+    type waitq struct {     // waitq是一个双向链表，每个节点都是一个sudog结构。
+        first *sudog
+        last  *sudog
+    }
+
+    1. 发送数据
+        1.1 如果当前chan上面存在已经阻塞的g，那么会将数据直接发送给g，并将g设置成下一个要运行的g
+        1.2 如果当前chan上面存在缓冲并且还有空闲容量，将数据存储到当前chan的缓冲区的sendx位置上
+        1.3 如果不存在缓冲或者缓冲已经满了，创建一个sudog结构，并加入chan的sendq队列中，当前chan也会陷入阻塞等待其它
+            协程从channel中接收到数据。
+    2. 接收数据
+        2.1 如果chan为nil，直接返回，让出处理器的使用权
+        2.2 如果chan已经关闭，并且没有剩余数据，返回0值。
+        2.3 如果chan存在发送阻塞的g，就会将recvx索引处的数据拷贝到接收变量所在的内存空间，并将发送阻塞g的数据拷贝到chan中
+        2.4 如果chan中存在数据，就将sendx索引处的数据拷贝到接收变量所在的内存空间
+        2.5 当chan中既不存在数据，也不存在发送阻塞的g时，就会阻塞接收的g。当然如果使用select/case的话也可以让当前g不会阻塞。
+    3. 关闭chan
+        3.1 如果chan为nil或者已经处于closed状态，直接抛出异常。
+        3.2 释放所有阻塞的读者和写者（会panic），并使它们的状态变成ready。
 ```
 
 操作系统部分：
@@ -784,11 +827,11 @@ Auth | {CertificateVerify*}
 5. Redis 持久化有哪几种方式？
 ```
     1. RDB方式：默认开启，Redis会按照配置的指定时间将内存中的数据写入道磁盘上，创建一个dump.rdb文件，Redis启动时再恢复到内存。
-       Redis会fork出一个子进程，将当前父进程的数据库拷贝到子进程的内存中来，然后由子进程负责写入到临时文件，持久化的过程结束了，再用
+       Redis会fork出一个子进程，将当前父进程的数据库拷贝到子进程的内存中（Copy On Write）来，然后由子进程负责写入到临时文件，持久化的过程结束了，再用
        这个临时文件替换掉上次的快照文件成为新的快照。
     2. AOF方式：以日志的形式记录每条写操作，不记录读操作。Redis启动时会根据日志内容从头到尾的执行一遍，完成持久化。
        因为采用追加的方式，会使的文件越来越大，针对这个问题，新增了重写机制，当日志文件大到一定程度的时候，会fork出一条子进程，将当前父进程
-       内存中的数据拷贝到子进程中，每条记录对应一条set语句，写入临时文件中，之后再替换原来的aof文件。默认触发条件是日志文件大小翻倍，并且大于64M。
+       内存中的数据拷贝到子进程（COW）中，每条记录对应一条set语句，写入临时文件中，之后再替换原来的aof文件。默认触发条件是日志文件大小翻倍，并且大于64M。
        在重写时，写入父进程数据库中命令也会被记录到缓存中，然后分别追加到新旧aof文件中。
 ```
 
