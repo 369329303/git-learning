@@ -895,7 +895,7 @@ Auth | {CertificateVerify*}
 12. InnoDB和MyISAM的区别？
 ```
     1. 事务的支持：InnoDB支持事务，MyISAM不支持事务。
-    2. 锁的粒度：InnoDB为行级锁，MyISAM为标记锁。
+    2. 锁的粒度：InnoDB为行级锁，MyISAM为表级锁。
     3. 索引类型：InnoDB为聚簇索引，MyISAM为非聚簇索引。
     4. 恢复完整度：InnoDB在数据库崩溃后容易恢复，MyISAM不容易恢复完整。
     5. 对于外键的支持：InnoDB支持，MyISAM不支持。
